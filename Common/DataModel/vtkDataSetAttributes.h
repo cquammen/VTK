@@ -188,6 +188,11 @@ public:
   // which attribute.
   int IsArrayAnAttribute(int idx);
 
+  // Description: Set an array to use as the given attribute type
+  // (i.e., scalar, vector, tensor, etc.). Returns the index of the
+  // array if setting the attribute was set, -1 if not.
+  int SetAttribute(vtkAbstractArray* da, int attributeType);
+
   // Description:
   // Return an attribute given the attribute type
   // (see vtkDataSetAttributes::AttributeTypes).
@@ -591,7 +596,6 @@ protected:
   static const char LongAttributeNames[NUM_ATTRIBUTES][35];
 
 private:
-  int SetAttribute(vtkAbstractArray* da, int attributeType);
   static int CheckNumberOfComponents(vtkAbstractArray* da, int attributeType);
 
   vtkFieldData::BasicIterator  ComputeRequiredArrays(vtkDataSetAttributes* pd, int ctype);
