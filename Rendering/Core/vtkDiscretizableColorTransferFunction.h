@@ -150,8 +150,10 @@ public:
                                            int component);
 
   // Description:
-  // Returns the (x, r, g, b) values as an array. Performs exactly the same function
-  // as vtkColorTransferFunction::GetDataPointer().
+  // Returns the (x, r, g, b) values as an array.
+  // vtkColorTransferFunction::GetDataPointer(). Maintained for
+  // backwards compatibility.
+  // \deprecated use GetDataPointer() instead.
   double* GetRGBPoints();
 
   // Description:
@@ -238,10 +240,6 @@ private:
       int scalarType,
       void* scalarsPtr, int component,
       int numberOfComponents, vtkIdType numberOfTuples, unsigned char* colors);
-
-  // Description:
-  // Pointer used by GetRGBPoints().
-  double* Data;
 
   class vtkInternals;
   vtkInternals* Internals;
