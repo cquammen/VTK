@@ -50,11 +50,6 @@ vtkLookupTable::vtkLookupTable(int sze, int ext)
   this->AlphaRange[1] = 1.0;
   this->Alpha = 1.0;
 
-  this->NanColor[0] = 0.5;
-  this->NanColor[1] = 0.0;
-  this->NanColor[2] = 0.0;
-  this->NanColor[3] = 1.0;
-
   this->MinimumColor[0] = 0.0;
   this->MinimumColor[1] = 0.5;
   this->MinimumColor[2] = 0.0;
@@ -537,6 +532,7 @@ vtkIdType vtkLookupTable::GetIndex(double v)
   //   First, check whether we have a number...
   if ( vtkMath::IsNan( v ) )
     {
+    // TODO - this won't work...
     return vtkMath::Nan();
     }
 
@@ -573,45 +569,16 @@ void vtkLookupTable::SetTable(vtkUnsignedCharArray *table)
 }
 
 //----------------------------------------------------------------------------
-// Cast a double color in a type T color. colorIn and colorOut are expected
-// to be RGBA]4] and colorIn to be in [0.0, 1.0]
-unsigned char* GetColorAsUnsignedChars(const double* colorIn,
-                                       unsigned char* colorOut)
-{
-  if (!colorIn || !colorOut)
-    {
-    return NULL;
-    }
-
-  for ( int c = 0; c < 4; ++ c )
-    {
-    double v = colorIn[c];
-    if (v < 0.0) { v = 0.0; }
-    else if (v > 1.0) { v = 1.0; }
-    colorOut[c] = static_cast<unsigned char>( v * 255.0 + 0.5 );
-    }
-
-  return colorOut;
-}
-
-//----------------------------------------------------------------------------
-unsigned char* vtkLookupTable::GetNanColorAsUnsignedChars()
-{
-  return GetColorAsUnsignedChars(
-    this->GetNanColor(), this->NanColorChar);
-}
-
-//----------------------------------------------------------------------------
 unsigned char* vtkLookupTable::GetMinimumColorAsUnsignedChars()
 {
-  return GetColorAsUnsignedChars(
+  return this->GetColorAsUnsignedChars(
     this->GetMinimumColor(), this->MinimumColorChar);
 }
 
 //----------------------------------------------------------------------------
 unsigned char* vtkLookupTable::GetMaximumColorAsUnsignedChars()
 {
-  return GetColorAsUnsignedChars(
+  return this->GetColorAsUnsignedChars(
     this->GetMaximumColor(), this->MaximumColorChar);
 }
 
@@ -646,9 +613,9 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
   double alpha;
 
   unsigned char nanColor[4], minColorVec[4], maxColorVec[4];
-  GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
-  GetColorAsUnsignedChars(self->GetMinimumColor(), minColorVec);
-  GetColorAsUnsignedChars(self->GetMaximumColor(), maxColorVec);
+  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
+  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetMinimumColor(), minColorVec);
+  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetMaximumColor(), maxColorVec);
   unsigned char* minColor = self->GetUseMinimumColor() ? minColorVec : 0;
   unsigned char* maxColor = self->GetUseMaximumColor() ? minColorVec : 0;
 
@@ -909,7 +876,7 @@ void vtkLookupTableIndexedMapData(
   double alpha;
 
   unsigned char nanColor[4];
-  GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
+  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
 
   vtkVariant vin;
   if ( (alpha=self->GetAlpha()) >= 1.0 ) //no blending required
@@ -1213,9 +1180,6 @@ void vtkLookupTable::PrintSelf(ostream& os, vtkIndent indent)
      << this->ValueRange[1] << ")\n";
   os << indent << "AlphaRange: (" << this->AlphaRange[0] << ", "
      << this->AlphaRange[1] << ")\n";
-  os << indent << "NanColor: (" << this->NanColor[0] << ", "
-     << this->NanColor[1] << ", " << this->NanColor[2] << ", "
-     << this->NanColor[3] << ")\n";
   os << indent << "NumberOfTableValues: "
      << this->GetNumberOfTableValues() << "\n";
   os << indent << "NumberOfColors: " << this->NumberOfColors << "\n";

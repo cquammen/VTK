@@ -239,10 +239,6 @@ vtkColorTransferFunction::vtkColorTransferFunction()
 
   this->Scale = VTK_CTF_LINEAR;
 
-  this->NanColor[0] = 0.5;
-  this->NanColor[1] = 0.0;
-  this->NanColor[2] = 0.0;
-
   this->Function = NULL;
 
   this->Table = NULL;
@@ -1175,6 +1171,61 @@ void vtkColorTransferFunction::BuildFunctionFromTable(double xStart,
 }
 
 //----------------------------------------------------------------------------
+void vtkColorTransferFunction::SetNanColor(double rgb[4])
+{
+  this->SetNanColor(rgb[0], rgb[1], rgb[2]);
+}
+
+//----------------------------------------------------------------------------
+void vtkColorTransferFunction::SetNanColor(double r, double g, double b)
+{
+  this->NanColor[0] = r;
+  this->NanColor[1] = g;
+  this->NanColor[2] = b;
+  this->NanColor[3] = 1.0;
+}
+
+//----------------------------------------------------------------------------
+void vtkColorTransferFunction::SetNanColor(double r,
+                                           double g,
+                                           double b,
+                                           double vtkNotUsed(a))
+{
+  this->SetNanColor(r, g, b);
+}
+
+//----------------------------------------------------------------------------
+void vtkColorTransferFunction::GetNanColor(double rgb[4])
+{
+  rgb[0] = this->NanColor[0];
+  rgb[1] = this->NanColor[1];
+  rgb[2] = this->NanColor[2];
+  // do not set rgb[3] to maintain backwards compatibility
+}
+
+//----------------------------------------------------------------------------
+void vtkColorTransferFunction::GetNanColor(double &r, double &g, double &b)
+{
+  r = this->NanColor[0];
+  g = this->NanColor[1];
+  b = this->NanColor[2];
+}
+
+//----------------------------------------------------------------------------
+void vtkColorTransferFunction::GetNanColor(double &r, double &g, double &b, double &a)
+{
+  double dummy = 0.0;
+  this->Superclass::GetNanColor(r, g, b, dummy);
+  a = 1.0;
+}
+
+//----------------------------------------------------------------------------
+double* vtkColorTransferFunction::GetNanColor()
+{
+  return this->NanColor;
+}
+
+//----------------------------------------------------------------------------
 // For a specified index value, get the node parameters
 int vtkColorTransferFunction::GetNodeValue( int index, double val[6] )
 {
@@ -1831,10 +1882,6 @@ void vtkColorTransferFunction::PrintSelf(ostream& os, vtkIndent indent)
      << this->Range[1] << endl;
 
   os << indent << "AllowDuplicateScalars: " << this->AllowDuplicateScalars << endl;
-
-  os << indent << "NanColor: "
-     << this->NanColor[0] << ", " << this->NanColor[1] << ", "
-     << this->NanColor[2] << endl;
 
   unsigned int i;
   for( i = 0; i < this->Internal->Nodes.size(); i++ )

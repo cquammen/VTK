@@ -78,6 +78,12 @@ public:
     {this->SetRange(rng[0],rng[1]);}
 
   // Description:
+  // Set the color to use when a NaN (not a number) is encountered.  This is an
+  // RGBA 4-tuple color of doubles in the range [0,1].
+  vtkSetVector4Macro(NanColor, double);
+  vtkGetVector4Macro(NanColor, double);
+
+  // Description:
   // Map one value through the lookup table and return a color defined
   // as a RGBA unsigned char tuple (4 bytes).
   virtual unsigned char *MapValue(double v);
@@ -92,6 +98,11 @@ public:
   // an RGB array of doubles between 0 and 1.
   double *GetColor(double v)
     {this->GetColor(v,this->RGB); return this->RGB;}
+
+  // Description:
+  // Return the color as a pointer to 4 unsigned chars.
+  // This will overwrite any data returned by previous calls to MapValue.
+  unsigned char* GetNanColorAsUnsignedChars();
 
   // Description:
   // Map one value through the lookup table and return the alpha value
@@ -315,6 +326,12 @@ public:
   vtkGetMacro(IndexedLookup,int);
   vtkBooleanMacro(IndexedLookup,int);
 
+  // Description:
+  // Cast a double color to an unsigned color. colorIn and colorOut are expected
+  // to be RGBA[4] and colorIn components are in the range [0.0, 1.0]
+  static unsigned char* GetColorAsUnsignedChars(const double* colorIn,
+                                                unsigned char* colorOut);
+
 protected:
   vtkScalarsToColors();
   ~vtkScalarsToColors();
@@ -350,6 +367,11 @@ protected:
   // Update the map from annotated values to indices in the array of
   // annotations.
   virtual void UpdateAnnotatedValueMap();
+
+  // Description:
+  // Color to use for NaN values in the data.
+  double        NanColor[4];
+  unsigned char NanColorChar[4];
 
   // Annotations of specific values.
   vtkAbstractArray* AnnotatedValues;

@@ -45,6 +45,11 @@ vtkScalarsToColors::vtkScalarsToColors()
   this->InputRange[0] = 0.0;
   this->InputRange[1] = 255.0;
 
+  this->NanColor[0] = 0.5;
+  this->NanColor[1] = 0.0;
+  this->NanColor[2] = 0.0;
+  this->NanColor[3] = 1.0;
+
   // Annotated values, their annotations, and whether colors
   // should be indexed by annotated value.
   this->AnnotatedValues = 0;
@@ -73,10 +78,11 @@ vtkScalarsToColors::~vtkScalarsToColors()
 //----------------------------------------------------------------------------
 // Description:
 // Return true if all of the values defining the mapping have an opacity
-// equal to 1. Default implementation return true.
+// equal to 1. Default implementation returns 1 if NanColor alpha is less
+// than 0.
 int vtkScalarsToColors::IsOpaque()
 {
-  return 1;
+  return (this->NanColor[3] < 1.0);
 }
 
 //----------------------------------------------------------------------------
@@ -120,6 +126,33 @@ void vtkScalarsToColors::SetRange(double minval, double maxval)
 double *vtkScalarsToColors::GetRange()
 {
   return this->InputRange;
+}
+
+//----------------------------------------------------------------------------
+unsigned char* vtkScalarsToColors::GetNanColorAsUnsignedChars()
+{
+  return this->GetColorAsUnsignedChars(
+    this->GetNanColor(), this->NanColorChar);
+}
+
+//----------------------------------------------------------------------------
+unsigned char* vtkScalarsToColors::GetColorAsUnsignedChars(const double* colorIn,
+                                                           unsigned char* colorOut)
+{
+  if (!colorIn || !colorOut)
+    {
+    return NULL;
+    }
+
+  for ( int c = 0; c < 4; ++ c )
+    {
+    double v = colorIn[c];
+    if (v < 0.0) { v = 0.0; }
+    else if (v > 1.0) { v = 1.0; }
+    colorOut[c] = static_cast<unsigned char>( v * 255.0 + 0.5 );
+    }
+
+  return colorOut;
 }
 
 //----------------------------------------------------------------------------
@@ -1553,6 +1586,9 @@ void vtkScalarsToColors::PrintSelf(ostream& os, vtkIndent indent)
   this->Superclass::PrintSelf(os,indent);
 
   os << indent << "Alpha: " << this->Alpha << "\n";
+  os << indent << "NanColor: (" << this->NanColor[0] << ", "
+     << this->NanColor[1] << ", " << this->NanColor[2] << ", "
+     << this->NanColor[3] << ")\n";
   if (this->VectorMode == vtkScalarsToColors::MAGNITUDE)
     {
     os << indent << "VectorMode: Magnitude\n";

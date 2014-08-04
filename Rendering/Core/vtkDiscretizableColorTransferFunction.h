@@ -169,9 +169,11 @@ public:
   // RGB 3-tuple color of doubles in the range [0, 1].
   // Overridden to pass the NanColor to the internal vtkLookupTable.
   virtual void SetNanColor(double r, double g, double b);
-  virtual void SetNanColor(double rgb[3]) {
-    this->SetNanColor(rgb[0], rgb[1], rgb[2]);
-  }
+  virtual void SetNanColor(double rgb[3])
+    { this->SetNanColor(rgb[0], rgb[1], rgb[2]); }
+
+  virtual void SetNanColor(double r, double g, double b, double vtkNotUsed(a))
+    { this->SetNanColor(r, g, b); }
 
   // Description:
   // This should return 1 if the subclass is using log scale for

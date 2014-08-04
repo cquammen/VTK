@@ -150,12 +150,6 @@ public:
   vtkGetVector2Macro(AlphaRange,double);
 
   // Description:
-  // Set the color to use when a NaN (not a number) is encountered.  This is an
-  // RGBA 4-tuple color of doubles in the range [0,1].
-  vtkSetVector4Macro(NanColor, double);
-  vtkGetVector4Macro(NanColor, double);
-
-  // Description:
   // Set the color associated with the out-of-range values.
   // RGBA 4-tuple color of doubles in the range [0,1].
   vtkSetVector4Macro(MinimumColor, double);
@@ -186,7 +180,6 @@ public:
   // Description:
   // Return the color as a pointer to 4 unsigned chars.
   // This will overwrite any data returned by previous calls to MapValue.
-  unsigned char* GetNanColorAsUnsignedChars();
   unsigned char* GetMinimumColorAsUnsignedChars();
   unsigned char* GetMaximumColorAsUnsignedChars();
 
@@ -334,7 +327,6 @@ protected:
   double SaturationRange[2];
   double ValueRange[2];
   double AlphaRange[2];
-  double NanColor[4];
   double MinimumColor[4];
   bool UseMinimumColor;
   double MaximumColor[4];
@@ -344,7 +336,6 @@ protected:
   vtkTimeStamp InsertTime;
   vtkTimeStamp BuildTime;
   double RGBA[4]; //used during conversion process
-  unsigned char NanColorChar[4];
   unsigned char MinimumColorChar[4];
   unsigned char MaximumColorChar[4];
 

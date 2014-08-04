@@ -168,7 +168,7 @@ public:
   vtkBooleanMacro(HSVWrap, int);
 
   // Description:
-  // Set the type of scale to use, linear or logarithmic.  The default
+  // Set the type of scale to use, linear or logarithmic. The default
   // is linear.  If the scale is logarithmic, and the range contains
   // zero, the color mapping will be linear.
   vtkSetMacro(Scale,int);
@@ -178,9 +178,38 @@ public:
 
   // Description:
   // Set the color to use when a NaN (not a number) is encountered.  This is an
-  // RGB 3-tuple color of doubles in the range [0,1].
-  vtkSetVector3Macro(NanColor, double);
-  vtkGetVector3Macro(NanColor, double);
+  // RGB 3-tuple color of doubles in the range [0,1]. Overridden from base class
+  // to not read alpha component to maintain backwards compatibility.
+  virtual void SetNanColor(double rgb[4]);
+
+  // Description:
+  // Provided for backwards compatibility.
+  // \deprecated Use SetNanColor(double r, double g, double b, double a) instead.
+  virtual void SetNanColor(double r, double g, double b);
+
+  // Description:
+  // Overridden from superclass to avoid shadowed method warning.
+  // The alpha component is ignored.
+  virtual void SetNanColor(double r, double g, double b, double vtkNotUsed(a));
+
+  // Description:
+  // Provided for backwards compatibility.
+  // Does not write the alpha component in the fourth element of argument.
+  virtual void GetNanColor(double rgb[4]);
+
+  // Description:
+  // Provided for backwards compatibility.
+  // \deprecated Use GetNanColor(double &r, double &g, double &b, double &a) instead.
+  virtual void GetNanColor(double &r, double &g, double &b);
+
+  // Description:
+  // Overridden from superclass to avoid shadowed method warning.
+  // Alpha component returned is always 1.0.
+  virtual void GetNanColor(double &r, double &g, double &b, double &a);
+
+  // Description:
+  // Overridden from superclass to avoid shadowed method warning.
+  virtual double *GetNanColor();
 
   // Description:
   // Returns a pointer to an array of all node values in an
@@ -244,10 +273,6 @@ protected:
   // Description:
   // The color interpolation scale (linear or logarithmic).
   int Scale;
-
-  // Description:
-  // The color to use for not-a-number.
-  double NanColor[3];
 
   // Description:
   // Temporary array to store data from the nodes.
