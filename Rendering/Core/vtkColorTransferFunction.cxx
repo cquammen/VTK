@@ -15,6 +15,7 @@
 #include "vtkColorTransferFunction.h"
 
 #include "vtkMath.h"
+#include "vtkMathUtilities.h"
 #include "vtkObjectFactory.h"
 
 #include <algorithm>
@@ -821,12 +822,20 @@ void vtkColorTransferFunction::GetTable( double xStart, double xEnd,
       tptr[1] = (this->Clamping)?(lastG):(0.0);
       tptr[2] = (this->Clamping)?(lastB):(0.0);
       }
-    // Are we before the first node? If so, duplicate this nodes values
-    else if ( idx == 0 )
+    // Are we before the first node? If so, duplicate this node's values.
+    // We have to deal with -inf here.
+    else if ( idx == 0 && (x < xStart || (vtkMath::IsInf(x) && x < 0)) )
       {
       tptr[0] = (this->Clamping)?(this->Internal->Nodes[0]->R):(0.0);
       tptr[1] = (this->Clamping)?(this->Internal->Nodes[0]->G):(0.0);
       tptr[2] = (this->Clamping)?(this->Internal->Nodes[0]->B):(0.0);
+      }
+    // Are we right at the first node or very near it? Is so, use first node value.
+    else if ( idx == 0 && vtkMathUtilities::FuzzyCompare(x, xStart, 1.0e-6) )
+      {
+      tptr[0] = this->Internal->Nodes[0]->R;
+      tptr[1] = this->Internal->Nodes[0]->G;
+      tptr[2] = this->Internal->Nodes[0]->B;
       }
     // Otherwise, we are between two nodes - interpolate
     else
