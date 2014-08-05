@@ -184,6 +184,10 @@ void vtkDiscretizableColorTransferFunction::Build()
   this->LookupTable->SetVectorMode(this->VectorMode);
   this->LookupTable->SetVectorComponent(this->VectorComponent);
   this->LookupTable->SetIndexedLookup(this->IndexedLookup);
+  this->LookupTable->SetBelowRangeColor(this->BelowRangeColor);
+  this->LookupTable->SetUseBelowRangeColor(this->UseBelowRangeColor);
+  this->LookupTable->SetAboveRangeColor(this->AboveRangeColor);
+  this->LookupTable->SetUseAboveRangeColor(this->UseAboveRangeColor);
 
   // this  is essential since other the LookupTable doesn't update the
   // annotations map. That's a bug in the implementation of
