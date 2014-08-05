@@ -37,6 +37,12 @@
 // index in the list of annotations with the number of colors in the
 // table.
 //
+// A \a BelowRangeColor and an \a AboveRangeColor can be used
+// (respectively with \a UseBelowRangeColor and \a UseAboveRangeColor)
+// when returning colors from out-of-range values. Note that when
+// using \a AboveRangeColor, the values will be mapped in the given \a
+// table range [min, max[ (max excluded).
+//
 // .SECTION See Also
 // vtkLookupTable vtkColorTransferFunction
 
@@ -59,6 +65,12 @@ public:
   vtkTypeMacro(vtkScalarsToColors,vtkObject);
   void PrintSelf(ostream& os, vtkIndent indent);
   static vtkScalarsToColors *New();
+
+  // Description::
+  // Special indices that identify special colors.
+  static const vtkIdType NAN_COLOR_INDEX;
+  static const vtkIdType BELOW_RANGE_COLOR_INDEX;
+  static const vtkIdType ABOVE_RANGE_COLOR_INDEX;
 
   // Description:
   // Return true if all of the values defining the mapping have an opacity
@@ -84,6 +96,46 @@ public:
   vtkGetVector4Macro(NanColor, double);
 
   // Description:
+  // Return the color as a pointer to 4 unsigned chars.
+  // This will overwrite any data returned by previous calls to MapValue.
+  unsigned char* GetNanColorAsUnsignedChars();
+
+  // Description:
+  // Set the color associated with values below the minimum of the
+  // range specified for the color map.  RGBA 4-tuple color of doubles
+  // in the range [0,1].
+  vtkSetVector4Macro(BelowRangeColor, double);
+  vtkGetVector4Macro(BelowRangeColor, double);
+  vtkSetVector4Macro(AboveRangeColor, double);
+  vtkGetVector4Macro(AboveRangeColor, double);
+
+  // Description:
+  // Set whether the \a BelowRangeColor and the \a AboveRangeColor will be used
+  // .Note that when using \a AboveRangeColor, the values will be mapped in the
+  // given \a table range [min, max) (max excluded).
+  vtkSetMacro(UseBelowRangeColor, bool);
+  vtkGetMacro(UseBelowRangeColor, bool);
+  vtkBooleanMacro(UseBelowRangeColor, bool);
+  vtkSetMacro(UseAboveRangeColor, bool);
+  vtkGetMacro(UseAboveRangeColor, bool);
+  vtkBooleanMacro(UseAboveRangeColor, bool);
+
+  // Description:
+  // Helper method to set \a UseBelowRangeColor and \a UseAboveRangeColor at the same
+  // time.
+  void SetUseRangeColors(bool use)
+    {
+    this->SetUseBelowRangeColor(use);
+    this->SetUseAboveRangeColor(use);
+    }
+
+  // Description:
+  // Return the color as a pointer to 4 unsigned chars.
+  // This will overwrite any data returned by previous calls to MapValue.
+  unsigned char* GetBelowRangeColorAsUnsignedChars();
+  unsigned char* GetAboveRangeColorAsUnsignedChars();
+
+  // Description:
   // Map one value through the lookup table and return a color defined
   // as a RGBA unsigned char tuple (4 bytes).
   virtual unsigned char *MapValue(double v);
@@ -98,11 +150,6 @@ public:
   // an RGB array of doubles between 0 and 1.
   double *GetColor(double v)
     {this->GetColor(v,this->RGB); return this->RGB;}
-
-  // Description:
-  // Return the color as a pointer to 4 unsigned chars.
-  // This will overwrite any data returned by previous calls to MapValue.
-  unsigned char* GetNanColorAsUnsignedChars();
 
   // Description:
   // Map one value through the lookup table and return the alpha value
@@ -373,6 +420,15 @@ protected:
   double        NanColor[4];
   unsigned char NanColorChar[4];
 
+  // Description:
+  // Colors to use for out-of-range values and flags for whether to use them.
+  double        BelowRangeColor[4];
+  double        AboveRangeColor[4];
+  unsigned char BelowRangeColorChar[4];
+  unsigned char AboveRangeColorChar[4];
+  bool          UseBelowRangeColor;
+  bool          UseAboveRangeColor;
+
   // Annotations of specific values.
   vtkAbstractArray* AnnotatedValues;
   vtkStringArray*   Annotations;
@@ -392,9 +448,10 @@ protected:
   // Obsolete, kept so subclasses will still compile
   int UseMagnitude;
 
+  unsigned char RGBABytes[4];
+
 private:
   double RGB[3];
-  unsigned char RGBABytes[4];
   double InputRange[2];
 
   vtkScalarsToColors(const vtkScalarsToColors&);  // Not implemented.
@@ -402,6 +459,3 @@ private:
 };
 
 #endif
-
-
-

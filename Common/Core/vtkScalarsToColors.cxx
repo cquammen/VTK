@@ -34,6 +34,11 @@ class vtkScalarsToColors::vtkInternalAnnotatedValueMap :
 vtkStandardNewMacro(vtkScalarsToColors);
 
 //----------------------------------------------------------------------------
+const vtkIdType vtkScalarsToColors::NAN_COLOR_INDEX         = (VTK_ID_MIN);
+const vtkIdType vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX = (VTK_ID_MIN+1);
+const vtkIdType vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX = (VTK_ID_MIN+2);
+
+//----------------------------------------------------------------------------
 vtkScalarsToColors::vtkScalarsToColors()
 {
   this->Alpha = 1.0;
@@ -49,6 +54,18 @@ vtkScalarsToColors::vtkScalarsToColors()
   this->NanColor[1] = 0.0;
   this->NanColor[2] = 0.0;
   this->NanColor[3] = 1.0;
+
+  this->BelowRangeColor[0] = 0.0;
+  this->BelowRangeColor[1] = 0.5;
+  this->BelowRangeColor[2] = 0.0;
+  this->BelowRangeColor[3] = 1.0;
+  this->UseBelowRangeColor = false;
+
+  this->AboveRangeColor[0] = 0.0;
+  this->AboveRangeColor[1] = 0.0;
+  this->AboveRangeColor[2] = 0.5;
+  this->AboveRangeColor[3] = 1.0;
+  this->UseAboveRangeColor = false;
 
   // Annotated values, their annotations, and whether colors
   // should be indexed by annotated value.
@@ -82,7 +99,9 @@ vtkScalarsToColors::~vtkScalarsToColors()
 // than 0.
 int vtkScalarsToColors::IsOpaque()
 {
-  return (this->NanColor[3] < 1.0);
+  return !(this->NanColor[3] < 1.0 ||
+           (this->UseBelowRangeColor && this->BelowRangeColor[3] < 1.0) ||
+           (this->UseAboveRangeColor && this->AboveRangeColor[3] < 1.0));
 }
 
 //----------------------------------------------------------------------------
@@ -136,6 +155,20 @@ unsigned char* vtkScalarsToColors::GetNanColorAsUnsignedChars()
 }
 
 //----------------------------------------------------------------------------
+unsigned char* vtkScalarsToColors::GetBelowRangeColorAsUnsignedChars()
+{
+  return this->GetColorAsUnsignedChars(
+    this->GetBelowRangeColor(), this->BelowRangeColorChar);
+}
+
+//----------------------------------------------------------------------------
+unsigned char* vtkScalarsToColors::GetAboveRangeColorAsUnsignedChars()
+{
+  return this->GetColorAsUnsignedChars(
+    this->GetAboveRangeColor(), this->AboveRangeColorChar);
+}
+
+//----------------------------------------------------------------------------
 unsigned char* vtkScalarsToColors::GetColorAsUnsignedChars(const double* colorIn,
                                                            unsigned char* colorOut)
 {
@@ -167,6 +200,14 @@ void vtkScalarsToColors::DeepCopy(vtkScalarsToColors *obj)
 {
   if (obj)
     {
+    for (int i = 0; i < 4; ++i)
+      {
+      this->NanColor[i] = obj->NanColor[i];
+      this->BelowRangeColor[i] = obj->BelowRangeColor[i];
+      this->AboveRangeColor[i] = obj->AboveRangeColor[i];
+      }
+    this->UseBelowRangeColor = obj->UseBelowRangeColor;
+    this->UseAboveRangeColor = obj->UseAboveRangeColor;
     this->Alpha = obj->Alpha;
     this->VectorMode = obj->VectorMode;
     this->VectorComponent = obj->VectorComponent;
@@ -1589,6 +1630,14 @@ void vtkScalarsToColors::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "NanColor: (" << this->NanColor[0] << ", "
      << this->NanColor[1] << ", " << this->NanColor[2] << ", "
      << this->NanColor[3] << ")\n";
+  os << indent << "BelowRangeColor: (" << this->BelowRangeColor[0] << ", "
+     << this->BelowRangeColor[1] << ", " << this->BelowRangeColor[2] << ", "
+     << this->BelowRangeColor[3] << ")\n";
+  os << indent << "UseBelowRangeColor: " << (this->UseBelowRangeColor ? "ON" : "OFF") << "\n";
+  os << indent << "AboveRangeColor: (" << this->AboveRangeColor[0] << ", "
+     << this->AboveRangeColor[1] << ", " << this->AboveRangeColor[2] << ", "
+     << this->AboveRangeColor[3] << ")\n";
+  os << indent << "UseAboveRangeColor: " << (this->UseAboveRangeColor ? "ON" : "OFF") << "\n";
   if (this->VectorMode == vtkScalarsToColors::MAGNITUDE)
     {
     os << indent << "VectorMode: Magnitude\n";

@@ -50,18 +50,6 @@ vtkLookupTable::vtkLookupTable(int sze, int ext)
   this->AlphaRange[1] = 1.0;
   this->Alpha = 1.0;
 
-  this->MinimumColor[0] = 0.0;
-  this->MinimumColor[1] = 0.5;
-  this->MinimumColor[2] = 0.0;
-  this->MinimumColor[3] = 1.0;
-  this->UseMinimumColor = false;
-
-  this->MaximumColor[0] = 0.0;
-  this->MaximumColor[1] = 0.0;
-  this->MaximumColor[2] = 0.5;
-  this->MaximumColor[3] = 1.0;
-  this->UseMaximumColor = false;
-
   this->TableRange[0] = 0.0;
   this->TableRange[1] = 1.0;
 
@@ -84,12 +72,14 @@ vtkLookupTable::~vtkLookupTable()
 // equal to 1. Default implementation return true.
 int vtkLookupTable::IsOpaque()
 {
+  if (!this->Superclass::IsOpaque())
+    {
+    return 0;
+    }
+
   if(this->OpaqueFlagBuildTime<this->GetMTime())
     {
     int opaque=1;
-    if (this->NanColor[3] < 1.0) { opaque = 0; }
-    if (this->UseMinimumColor && this->MinimumColor[3] < 1.0) { opaque = 0; }
-    if (this->UseMaximumColor && this->MaximumColor[3] < 1.0) { opaque = 0; }
     int size=this->Table->GetNumberOfTuples();
     int i=0;
     unsigned char *ptr=this->Table->GetPointer(0);
@@ -384,24 +374,29 @@ inline vtkIdType vtkLinearIndexLookupMain(double v,
                                           double shift, double scale,
                                           bool useMin, bool useMax)
 {
-  double findx = (v + shift)*scale;
+  vtkIdType findx = static_cast<vtkIdType>((v + shift)*scale);
+  vtkIdType maxId = static_cast<vtkIdType>(maxIndex);
 
   // do not change this code: it compiles into min/max opcodes
-  if (!useMin)
+  if (useMin)
     {
-    findx = (findx > 0 ? findx : 0);
+    findx = (findx >= 0 ? findx : vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
     }
   else
     {
-    findx = (findx >= 0 ? findx : -1);
+    findx = (findx > 0 ? findx : 0);
     }
 
-  if (!useMax)
+  if (useMax)
     {
-    findx = (findx < maxIndex ? findx : maxIndex);
+    findx = (findx < maxId ? findx : vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
+    }
+  else
+    {
+    findx = (findx < maxId ? findx : maxId);
     }
 
-  return static_cast<vtkIdType>(findx);
+  return findx;
 }
 //----------------------------------------------------------------------------
 // Get index and do the table lookup.
@@ -522,23 +517,30 @@ vtkIdType vtkLookupTable::GetIndex(double v)
     vtkLookupTableLogRange(this->TableRange, logRange);
     vtkLookupShiftAndScale(logRange, maxIndex, shift, scale);
     v = vtkApplyLogScale(v, this->TableRange, logRange);
+    if (v < logRange[0])
+      {
+      return BELOW_RANGE_COLOR_INDEX;
+      }
+    else if (v > logRange[1])
+      {
+      return ABOVE_RANGE_COLOR_INDEX;
+      }
     }
   else
     {   // plain old linear
     vtkLookupShiftAndScale(this->TableRange, maxIndex, shift, scale);
     }
 
-  // Map to an index:
-  //   First, check whether we have a number...
+  // First, check whether we have a number...
   if ( vtkMath::IsNan( v ) )
     {
-    // TODO - this won't work...
-    return vtkMath::Nan();
+    return NAN_COLOR_INDEX;
     }
+  // Then check whether we are above or below the range
 
+  // Map to an index:
   return vtkLinearIndexLookupMain(
-    v, maxIndex, shift, scale,
-    this->GetUseMinimumColor(), this->GetUseMaximumColor());
+    v, maxIndex, shift, scale, this->GetUseBelowRangeColor(), this->GetUseAboveRangeColor());
 }
 
 //----------------------------------------------------------------------------
@@ -569,33 +571,42 @@ void vtkLookupTable::SetTable(vtkUnsignedCharArray *table)
 }
 
 //----------------------------------------------------------------------------
-unsigned char* vtkLookupTable::GetMinimumColorAsUnsignedChars()
-{
-  return this->GetColorAsUnsignedChars(
-    this->GetMinimumColor(), this->MinimumColorChar);
-}
-
-//----------------------------------------------------------------------------
-unsigned char* vtkLookupTable::GetMaximumColorAsUnsignedChars()
-{
-  return this->GetColorAsUnsignedChars(
-    this->GetMaximumColor(), this->MaximumColorChar);
-}
-
-//----------------------------------------------------------------------------
 // Given a scalar value v, return an rgba color value from lookup table.
 unsigned char* vtkLookupTable::MapValue(double v)
 {
-  vtkIdType idx = this->GetIndex(v);
+  vtkIdType index = this->GetIndex(v);
 
-  unsigned char* minColor =
-    this->GetUseMinimumColor() ? this->GetMinimumColorAsUnsignedChars() : 0;
-  unsigned char* maxColor =
-    this->GetUseMaximumColor() ? this->GetMaximumColorAsUnsignedChars() : 0;
+  if (index == NAN_COLOR_INDEX)
+    {
+    return this->GetNanColorAsUnsignedChars();
+    }
+  else if (index == BELOW_RANGE_COLOR_INDEX)
+    {
+    this->GetColorAsUnsignedChars(this->BelowRangeColor, this->BelowRangeColorChar);
+    return this->BelowRangeColorChar;
+    }
+  else if (index == ABOVE_RANGE_COLOR_INDEX)
+    {
+    this->GetColorAsUnsignedChars(this->AboveRangeColor, this->AboveRangeColorChar);
+    return this->AboveRangeColorChar;
+    }
 
-  return vtkLinearLookupIndex(idx, this->Table->GetPointer(0),
-    this->NumberOfColors-1, this->GetNanColorAsUnsignedChars(),
-    minColor, maxColor);
+  unsigned char* color =
+    vtkLinearLookupIndex(index, this->Table->GetPointer(0), this->NumberOfColors-1,
+                         this->GetNanColorAsUnsignedChars(),
+                         this->GetBelowRangeColorAsUnsignedChars(),
+                         this->GetAboveRangeColorAsUnsignedChars());
+
+  if (!color)
+    {
+    this->RGBABytes[0] = 0;
+    this->RGBABytes[1] = 0;
+    this->RGBABytes[2] = 0;
+    this->RGBABytes[3] = 255;
+    color = this->RGBABytes;
+    }
+
+  return color;
 }
 
 //----------------------------------------------------------------------------
@@ -614,10 +625,11 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
 
   unsigned char nanColor[4], minColorVec[4], maxColorVec[4];
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
-  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetMinimumColor(), minColorVec);
-  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetMaximumColor(), maxColorVec);
-  unsigned char* minColor = self->GetUseMinimumColor() ? minColorVec : 0;
-  unsigned char* maxColor = self->GetUseMaximumColor() ? minColorVec : 0;
+  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetBelowRangeColor(), minColorVec);
+  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetAboveRangeColor(), maxColorVec);
+
+  unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : 0;
+  unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : 0;
 
   if ( (alpha=self->GetAlpha()) >= 1.0 ) //no blending required
     {
@@ -1139,15 +1151,15 @@ void vtkLookupTable::SetTableValue(vtkIdType indx, double r, double g, double b,
 // components are expressed as [0,1] double values.
 void vtkLookupTable::GetTableValue(vtkIdType indx, double rgba[4])
 {
-  unsigned char* minColor =
-    this->GetUseMinimumColor() ? this->GetMinimumColorAsUnsignedChars() : 0;
-  unsigned char* maxColor =
-    this->GetUseMaximumColor() ? this->GetMaximumColorAsUnsignedChars() : 0;
+  unsigned char* belowRangeColor =
+    this->GetUseBelowRangeColor() ? this->GetBelowRangeColorAsUnsignedChars() : 0;
+  unsigned char* aboveRangeColor =
+    this->GetUseAboveRangeColor() ? this->GetAboveRangeColorAsUnsignedChars() : 0;
 
   unsigned char* _rgba =
     vtkLinearLookupIndex(indx, this->Table->GetPointer(0),
       this->NumberOfColors-1, this->GetNanColorAsUnsignedChars(),
-      minColor, maxColor);
+      belowRangeColor,  aboveRangeColor);
 
   rgba[0] = _rgba[0]/255.0;
   rgba[1] = _rgba[1]/255.0;
@@ -1231,15 +1243,7 @@ void vtkLookupTable::DeepCopy(vtkScalarsToColors *obj)
   this->Ramp                = lut->Ramp;
   this->InsertTime          = lut->InsertTime;
   this->BuildTime           = lut->BuildTime;
-  this->UseMinimumColor = lut->UseMinimumColor;
-  this->UseMaximumColor = lut->UseMaximumColor;
 
-  for (int i = 0; i < 4; ++i)
-    {
-    this->NanColor[i] = lut->NanColor[i];
-    this->MinimumColor[i] = lut->MinimumColor[i];
-    this->MaximumColor[i] = lut->MaximumColor[i];
-    }
   this->Table->DeepCopy(lut->Table);
 
   this->Superclass::DeepCopy(obj);
