@@ -635,7 +635,6 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
   double shift, scale;
   unsigned char *table = self->GetPointer(0);
   unsigned char *cptr;
-  double alpha;
 
   unsigned char nanColor[4], minColorVec[4], maxColorVec[4];
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
@@ -645,249 +644,143 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
   unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : 0;
   unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : 0;
 
-  if ( (alpha=self->GetAlpha()) >= 1.0 ) //no blending required
-    {
-    if (self->GetScale() == VTK_SCALE_LOG10)
-      {
-      double val;
-      double logRange[2];
-      vtkLookupTableLogRange(range, logRange);
-      vtkLookupShiftAndScale(logRange, maxIndex, shift, scale);
-      if (outFormat == VTK_RGBA)
-        {
-        while (--i >= 0)
-          {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          output[3] = cptr[3];
-          input += inIncr;
-          output += 4;
-          }
-        }
-      else if (outFormat == VTK_RGB)
-        {
-        while (--i >= 0)
-          {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          input += inIncr;
-          output += 3;
-          }
-        }
-      else if (outFormat == VTK_LUMINANCE_ALPHA)
-        {
-        while (--i >= 0)
-          {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          output[1] = cptr[3];
-          input += inIncr;
-          output += 2;
-          }
-        }
-      else // outFormat == VTK_LUMINANCE
-        {
-        while (--i >= 0)
-          {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          input += inIncr;
-          }
-        }
-      }//if log scale
+  double alpha = self->GetAlpha();
 
-    else //not log scale
-      {
-      vtkLookupShiftAndScale(range, maxIndex, shift, scale);
-      if (outFormat == VTK_RGBA)
-        {
-        while (--i >= 0)
-          {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          output[3] = cptr[3];
-          input += inIncr;
-          output += 4;
-          }
-        }
-      else if (outFormat == VTK_RGB)
-        {
-        while (--i >= 0)
-          {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          input += inIncr;
-          output += 3;
-          }
-        }
-      else if (outFormat == VTK_LUMINANCE_ALPHA)
-        {
-        while (--i >= 0)
-          {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          output[1] = cptr[3];
-          input += inIncr;
-          output += 2;
-          }
-        }
-      else // outFormat == VTK_LUMINANCE
-        {
-        while (--i >= 0)
-          {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          input += inIncr;
-          }
-        }
-      }//if not log lookup
-    }//if blending not needed
-
-  else //blend with the specified alpha
+  if (self->GetScale() == VTK_SCALE_LOG10)
     {
-    if (self->GetScale() == VTK_SCALE_LOG10)
+    double val;
+    double logRange[2];
+    vtkLookupTableLogRange(range, logRange);
+    vtkLookupShiftAndScale(logRange, maxIndex, shift, scale);
+    if (outFormat == VTK_RGBA)
       {
-      double val;
-      double logRange[2];
-      vtkLookupTableLogRange(range, logRange);
-      vtkLookupShiftAndScale(logRange, maxIndex, shift, scale);
-      if (outFormat == VTK_RGBA)
+      while (--i >= 0)
         {
-        while (--i >= 0)
+        val = vtkApplyLogScale(*input, range, logRange);
+        cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
+                               nanColor, minColor, maxColor);
+        output[0] = cptr[0];
+        output[1] = cptr[1];
+        output[2] = cptr[2];
+        output[3] = cptr[3];
+        if (alpha < 1.0)
           {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
           output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-          input += inIncr;
-          output += 4;
           }
+        input += inIncr;
+        output += 4;
         }
-      else if (outFormat == VTK_RGB)
+      }
+    else if (outFormat == VTK_RGB)
+      {
+      while (--i >= 0)
         {
-        while (--i >= 0)
-          {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          input += inIncr;
-          output += 3;
-          }
+        val = vtkApplyLogScale(*input, range, logRange);
+        cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
+                               nanColor, minColor, maxColor);
+        output[0] = cptr[0];
+        output[1] = cptr[1];
+        output[2] = cptr[2];
+        input += inIncr;
+        output += 3;
         }
-      else if (outFormat == VTK_LUMINANCE_ALPHA)
+      }
+    else if (outFormat == VTK_LUMINANCE_ALPHA)
+      {
+      while (--i >= 0)
         {
-        while (--i >= 0)
+        val = vtkApplyLogScale(*input, range, logRange);
+        cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
+                               nanColor, minColor, maxColor);
+        output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                               cptr[2]*0.11 + 0.5);
+        output[1] = cptr[3];
+        if (alpha < 1.0)
           {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
           output[1] = static_cast<unsigned char>(alpha*cptr[3] + 0.5);
-          input += inIncr;
-          output += 2;
           }
+        input += inIncr;
+        output += 2;
         }
-      else // outFormat == VTK_LUMINANCE
-        {
-        while (--i >= 0)
-          {
-          val = vtkApplyLogScale(*input, range, logRange);
-          cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                                 nanColor, minColor, maxColor);
-          *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          input += inIncr;
-          }
-        }
-      }//log scale with blending
-
-    else //no log scale with blending
+      }
+    else // outFormat == VTK_LUMINANCE
       {
-      vtkLookupShiftAndScale(range, maxIndex, shift, scale);
-      if (outFormat == VTK_RGBA)
+      while (--i >= 0)
         {
-        while (--i >= 0)
+        val = vtkApplyLogScale(*input, range, logRange);
+        cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
+                               nanColor, minColor, maxColor);
+        *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                               cptr[2]*0.11 + 0.5);
+        input += inIncr;
+        }
+      }
+    }//if log scale
+
+  else //not log scale
+    {
+    vtkLookupShiftAndScale(range, maxIndex, shift, scale);
+    if (outFormat == VTK_RGBA)
+      {
+      while (--i >= 0)
+        {
+        cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
+                               nanColor, minColor, maxColor);
+        output[0] = cptr[0];
+        output[1] = cptr[1];
+        output[2] = cptr[2];
+        output[3] = cptr[3];
+        if (alpha < 1.0)
           {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
           output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-          input += inIncr;
-          output += 4;
           }
+        input += inIncr;
+        output += 4;
         }
-      else if (outFormat == VTK_RGB)
+      }
+    else if (outFormat == VTK_RGB)
+      {
+      while (--i >= 0)
         {
-        while (--i >= 0)
-          {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          input += inIncr;
-          output += 3;
-          }
+        cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
+                               nanColor, minColor, maxColor);
+        output[0] = cptr[0];
+        output[1] = cptr[1];
+        output[2] = cptr[2];
+        input += inIncr;
+        output += 3;
         }
-      else if (outFormat == VTK_LUMINANCE_ALPHA)
+      }
+    else if (outFormat == VTK_LUMINANCE_ALPHA)
+      {
+      while (--i >= 0)
         {
-        while (--i >= 0)
+        cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
+                               nanColor, minColor, maxColor);
+        output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                               cptr[2]*0.11 + 0.5);
+        output[1] = cptr[3];
+        if (alpha < 1.0)
           {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
           output[1] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-          input += inIncr;
-          output += 2;
           }
+        input += inIncr;
+        output += 2;
         }
-      else // outFormat == VTK_LUMINANCE
+      }
+    else // outFormat == VTK_LUMINANCE
+      {
+      while (--i >= 0)
         {
-        while (--i >= 0)
-          {
-          cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                                 nanColor, minColor, maxColor);
-          *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          input += inIncr;
-          }
+        cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
+                               nanColor, minColor, maxColor);
+        *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                               cptr[2]*0.11 + 0.5);
+        input += inIncr;
         }
-      }//no log scale
-    }//alpha blending
+      }
+    }//if not log lookup
+
 }
 
 
@@ -899,131 +792,78 @@ void vtkLookupTableIndexedMapData(
 {
   int i = length;
   unsigned char* cptr;
-  double alpha;
 
   unsigned char nanColor[4];
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
 
   vtkVariant vin;
-  if ( (alpha=self->GetAlpha()) >= 1.0 ) //no blending required
+  double alpha = self->GetAlpha();
+
+  if (outFormat == VTK_RGBA)
     {
-    if (outFormat == VTK_RGBA)
+    while (--i >= 0)
       {
-      while (--i >= 0)
-        {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
+      vin = *input;
+      vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
+      cptr = idx < 0 ? nanColor : self->GetPointer( idx );
 
-        output[0] = cptr[0];
-        output[1] = cptr[1];
-        output[2] = cptr[2];
-        output[3] = cptr[3];
-        input += inIncr;
-        output += 4;
-        }
-      }
-    else if (outFormat == VTK_RGB)
-      {
-      while (--i >= 0)
+      output[0] = cptr[0];
+      output[1] = cptr[1];
+      output[2] = cptr[2];
+      output[3] = cptr[3];
+      if (alpha < 1.0)
         {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-
-        output[0] = cptr[0];
-        output[1] = cptr[1];
-        output[2] = cptr[2];
-        input += inIncr;
-        output += 3;
-        }
-      }
-    else if (outFormat == VTK_LUMINANCE_ALPHA)
-      {
-      while (--i >= 0)
-        {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-        output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                               cptr[2]*0.11 + 0.5);
-        output[1] = cptr[3];
-        input += inIncr;
-        output += 2;
-        }
-      }
-    else // outFormat == VTK_LUMINANCE
-      {
-      while (--i >= 0)
-        {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-        *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                               cptr[2]*0.11 + 0.5);
-        input += inIncr;
-        }
-      }
-    } // if blending not needed
-
-  else // blend with the specified alpha
-    {
-    if (outFormat == VTK_RGBA)
-      {
-      while (--i >= 0)
-        {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-        output[0] = cptr[0];
-        output[1] = cptr[1];
-        output[2] = cptr[2];
         output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-        input += inIncr;
-        output += 4;
         }
+      input += inIncr;
+      output += 4;
       }
-    else if (outFormat == VTK_RGB)
+    }
+  else if (outFormat == VTK_RGB)
+    {
+    while (--i >= 0)
       {
-      while (--i >= 0)
-        {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-        output[0] = cptr[0];
-        output[1] = cptr[1];
-        output[2] = cptr[2];
-        input += inIncr;
-        output += 3;
-        }
+      vin = *input;
+      vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
+      cptr = idx < 0 ? nanColor : self->GetPointer( idx );
+
+      output[0] = cptr[0];
+      output[1] = cptr[1];
+      output[2] = cptr[2];
+      input += inIncr;
+      output += 3;
       }
-    else if (outFormat == VTK_LUMINANCE_ALPHA)
+    }
+  else if (outFormat == VTK_LUMINANCE_ALPHA)
+    {
+    while (--i >= 0)
       {
-      while (--i >= 0)
+      vin = *input;
+      vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
+      cptr = idx < 0 ? nanColor : self->GetPointer( idx );
+      output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                             cptr[2]*0.11 + 0.5);
+      output[1] = cptr[3];
+      if (alpha < 1.0)
         {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-        output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                               cptr[2]*0.11 + 0.5);
         output[1] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-        input += inIncr;
-        output += 2;
         }
+      input += inIncr;
+      output += 2;
       }
-    else // outFormat == VTK_LUMINANCE
+    }
+  else // outFormat == VTK_LUMINANCE
+    {
+    while (--i >= 0)
       {
-      while (--i >= 0)
-        {
-        vin = *input;
-        vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
-        cptr = idx < 0 ? nanColor : self->GetPointer( idx );
-        *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                               cptr[2]*0.11 + 0.5);
-        input += inIncr;
-        }
+      vin = *input;
+      vtkIdType idx = self->GetAnnotatedValueIndexInternal( vin );
+      cptr = idx < 0 ? nanColor : self->GetPointer( idx );
+      *output++ = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                             cptr[2]*0.11 + 0.5);
+      input += inIncr;
       }
-    } // alpha blending
+    }
 }
 
 //----------------------------------------------------------------------------
