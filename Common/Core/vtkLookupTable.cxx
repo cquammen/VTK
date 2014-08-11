@@ -638,107 +638,55 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
                            unsigned char *output, int length,
                            int inIncr, int outFormat)
 {
-  int i = length;
   double alpha = self->GetAlpha();
 
-  if (self->GetScale() == VTK_SCALE_LOG10)
+  int i = length;
+  while (--i >= 0)
     {
-    while (--i >= 0)
+    unsigned char* cptr = self->MapValue(*input);
+
+    switch (outFormat)
       {
-      unsigned char* cptr = self->MapValue(*input);
+      case VTK_RGBA:
+        output[0] = cptr[0];
+        output[1] = cptr[1];
+        output[2] = cptr[2];
+        output[3] = cptr[3];
+        if (alpha < 1.0)
+          {
+          output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
+          }
+        output += 4;
+        break;
 
-      switch (outFormat)
-        {
-        case VTK_RGBA:
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          output[3] = cptr[3];
-          if (alpha < 1.0)
-            {
-            output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-            }
-          output += 4;
-          break;
+      case VTK_RGB:
+        output[0] = cptr[0];
+        output[1] = cptr[1];
+        output[2] = cptr[2];
+        output += 3;
+        break;
 
-        case VTK_RGB:
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          output += 3;
-          break;
+      case VTK_LUMINANCE_ALPHA:
+        output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                               cptr[2]*0.11 + 0.5);
+        output[1] = cptr[3];
+        if (alpha < 1.0)
+          {
+          output[1] = static_cast<unsigned char>(alpha*cptr[3] + 0.5);
+          }
+        output += 2;
+        break;
 
-        case VTK_LUMINANCE_ALPHA:
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          output[1] = cptr[3];
-          if (alpha < 1.0)
-            {
-            output[1] = static_cast<unsigned char>(alpha*cptr[3] + 0.5);
-            }
-          output += 2;
-          break;
-
-        case VTK_LUMINANCE:
-        default:
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          output += 1;
-          break;
-        }
-
-      input += inIncr;
+      case VTK_LUMINANCE:
+      default:
+        output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
+                                               cptr[2]*0.11 + 0.5);
+        output += 1;
+        break;
       }
+
+    input += inIncr;
     }
-  else //not log scale
-    {
-    while (--i >= 0)
-      {
-      unsigned char* cptr = self->MapValue(*input);
-
-      switch (outFormat)
-        {
-        case VTK_RGBA:
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          output[3] = cptr[3];
-          if (alpha < 1.0)
-            {
-            output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-            }
-          output += 4;
-          break;
-
-        case VTK_RGB:
-          output[0] = cptr[0];
-          output[1] = cptr[1];
-          output[2] = cptr[2];
-          output += 3;
-          break;
-
-        case VTK_LUMINANCE_ALPHA:
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          output[1] = cptr[3];
-          if (alpha < 1.0)
-            {
-            output[1] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-            }
-          output += 2;
-          break;
-
-        case VTK_LUMINANCE:
-        default:
-          output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
-                                                 cptr[2]*0.11 + 0.5);
-          output += 1;
-          break;
-        }
-
-      input += inIncr;
-      }
-    }//if not log lookup
 }
 
 
