@@ -610,11 +610,15 @@ unsigned char* vtkLookupTable::MapValue(double v)
     return this->AboveRangeColorChar;
     }
 
+  unsigned char* minColor = this->GetUseBelowRangeColor() ?
+    this->GetBelowRangeColorAsUnsignedChars() : NULL;
+  unsigned char* maxColor = this->GetUseAboveRangeColor() ?
+    this->GetAboveRangeColorAsUnsignedChars() : NULL;
+
   unsigned char* color =
     vtkLinearLookupIndex(index, this->Table->GetPointer(0), this->NumberOfColors-1,
                          this->GetNanColorAsUnsignedChars(),
-                         this->GetBelowRangeColorAsUnsignedChars(),
-                         this->GetAboveRangeColorAsUnsignedChars());
+                         minColor, maxColor);
 
   if (!color)
     {
@@ -635,33 +639,14 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
                            int inIncr, int outFormat)
 {
   int i = length;
-  double *range = self->GetTableRange();
-  vtkIdType maxIndex = self->GetNumberOfColors() - 1;
-  double shift, scale;
-  unsigned char *table = self->GetPointer(0);
-  unsigned char *cptr;
-
-  unsigned char nanColor[4], minColorVec[4], maxColorVec[4];
-  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
-  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetBelowRangeColor(), minColorVec);
-  vtkScalarsToColors::GetColorAsUnsignedChars(self->GetAboveRangeColor(), maxColorVec);
-
-  unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : NULL;
-  unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : NULL;
-
   double alpha = self->GetAlpha();
 
   if (self->GetScale() == VTK_SCALE_LOG10)
     {
-    double val;
-    double logRange[2];
-    vtkLookupTableLogRange(range, logRange);
-    vtkLookupShiftAndScale(logRange, maxIndex, shift, scale);
     while (--i >= 0)
       {
-      val = vtkApplyLogScale(*input, range, logRange);
-      cptr = vtkLinearLookup(val, table, maxIndex, logRange, shift, scale,
-                             nanColor, minColor, maxColor);
+      unsigned char* cptr = self->MapValue(*input);
+
       switch (outFormat)
         {
         case VTK_RGBA:
@@ -707,11 +692,10 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
     }
   else //not log scale
     {
-    vtkLookupShiftAndScale(range, maxIndex, shift, scale);
     while (--i >= 0)
       {
-      cptr = vtkLinearLookup(*input, table, maxIndex, range, shift, scale,
-                             nanColor, minColor, maxColor);
+      unsigned char* cptr = self->MapValue(*input);
+
       switch (outFormat)
         {
         case VTK_RGBA:
