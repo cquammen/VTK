@@ -452,59 +452,6 @@ inline unsigned char *vtkLinearLookupIndex(vtkIdType index,
 }
 
 //----------------------------------------------------------------------------
-// Get index and do the table lookup.
-inline unsigned char *vtkLinearLookupMain(double v,
-                                          unsigned char *table,
-                                          vtkIdType maxIndex,
-                                          double range[2],
-                                          double shift, double scale,
-                                          unsigned char* nanColor,
-                                          unsigned char* minColor,
-                                          unsigned char* maxColor)
-{
-  vtkIdType indx =
-    vtkLinearIndexLookupMain(
-      v, maxIndex, range, shift, scale, minColor != 0, maxColor != 0);
-  return vtkLinearLookupIndex(indx, table, maxIndex, nanColor, minColor, maxColor);
-}
-
-//----------------------------------------------------------------------------
-template<class T>
-unsigned char *vtkLinearLookup(
-  T v, unsigned char *table, vtkIdType maxIndex, double range[2], double shift, double scale,
-  unsigned char* nanColor,
-  unsigned char*vtkNotUsed(minColor), unsigned char*vtkNotUsed(maxColor))
-{
-  return vtkLinearLookupMain(v, table, maxIndex, range, shift, scale, nanColor, 0, 0);
-}
-
-//----------------------------------------------------------------------------
-// Check for not-a-number when mapping double or float
-inline unsigned char *vtkLinearLookup(
-  double v, unsigned char *table, vtkIdType maxIndex, double range[2], double shift, double scale,
-  unsigned char *nanColor,
-  unsigned char *minColor, unsigned char *maxColor)
-{
-  if (vtkMath::IsNan(v))
-    {
-    return nanColor;
-    }
-
-  return vtkLinearLookupMain(
-    v, table, maxIndex, range, shift, scale, nanColor, minColor, maxColor);
-}
-
-//----------------------------------------------------------------------------
-inline unsigned char *vtkLinearLookup(
-  float v, unsigned char *table, vtkIdType maxIndex, double range[2], double shift, double scale,
-  unsigned char *nanColor,
-  unsigned char *minColor, unsigned char *maxColor)
-{
-  return vtkLinearLookup(static_cast<double>(v), table, maxIndex, range, shift, scale,
-                         nanColor, minColor, maxColor);
-}
-
-//----------------------------------------------------------------------------
 void vtkLookupTable::GetLogRange(const double range[2], double log_range[2])
 {
   vtkLookupTableLogRange(range, log_range);
