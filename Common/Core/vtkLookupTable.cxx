@@ -641,8 +641,9 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetBelowRangeColor(), minColorVec);
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetAboveRangeColor(), maxColorVec);
 
-  unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : 0;
-  unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : 0;
+  unsigned char black[4] = {0, 0, 0, 255};
+  unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : black;
+  unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : black;
 
   double alpha = self->GetAlpha();
 
