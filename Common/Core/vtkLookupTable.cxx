@@ -638,7 +638,17 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
                            unsigned char *output, int length,
                            int inIncr, int outFormat)
 {
-  double alpha = self->GetAlpha();
+  double alphaScale = self->GetAlpha();
+  double alphaShift = 0.0;
+
+  if (alphaScale > 1.0)
+    {
+    alphaScale = 1.0;
+    }
+  else if (alphaScale < 1.0)
+    {
+    alphaShift = 0.5;
+    }
 
   int i = length;
   while (--i >= 0)
@@ -651,11 +661,7 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
         output[0] = cptr[0];
         output[1] = cptr[1];
         output[2] = cptr[2];
-        output[3] = cptr[3];
-        if (alpha < 1.0)
-          {
-          output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-          }
+        output[3] = static_cast<unsigned char>(cptr[3]*alphaScale + alphaShift);
         output += 4;
         break;
 
@@ -669,11 +675,7 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
       case VTK_LUMINANCE_ALPHA:
         output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
                                                cptr[2]*0.11 + 0.5);
-        output[1] = cptr[3];
-        if (alpha < 1.0)
-          {
-          output[1] = static_cast<unsigned char>(alpha*cptr[3] + 0.5);
-          }
+        output[1] = static_cast<unsigned char>(alphaScale*cptr[3] + alphaShift);
         output += 2;
         break;
 
@@ -703,7 +705,18 @@ void vtkLookupTableIndexedMapData(
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetNanColor(), nanColor);
 
   vtkVariant vin;
-  double alpha = self->GetAlpha();
+  double alphaScale = self->GetAlpha();
+
+  double alphaShift = 0.0;
+
+  if (alphaScale > 1.0)
+    {
+    alphaScale = 1.0;
+    }
+  else if (alphaScale < 1.0)
+    {
+    alphaShift = 0.5;
+    }
 
   while (--i >= 0)
     {
@@ -717,11 +730,7 @@ void vtkLookupTableIndexedMapData(
         output[0] = cptr[0];
         output[1] = cptr[1];
         output[2] = cptr[2];
-        output[3] = cptr[3];
-        if (alpha < 1.0)
-          {
-          output[3] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-          }
+        output[3] = static_cast<unsigned char>(cptr[3]*alphaScale + alphaShift);
         output += 4;
         break;
 
@@ -736,10 +745,7 @@ void vtkLookupTableIndexedMapData(
         output[0] = static_cast<unsigned char>(cptr[0]*0.30 + cptr[1]*0.59 +
                                                cptr[2]*0.11 + 0.5);
         output[1] = cptr[3];
-        if (alpha < 1.0)
-          {
-          output[1] = static_cast<unsigned char>(cptr[3]*alpha + 0.5);
-          }
+        output[1] = static_cast<unsigned char>(cptr[3]*alphaScale + alphaShift);
         output += 2;
         break;
 
