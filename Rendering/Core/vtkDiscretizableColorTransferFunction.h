@@ -164,16 +164,39 @@ public:
   // Overridden to pass the alpha to the internal vtkLookupTable.
   virtual void SetAlpha(double alpha);
 
+  // Unhide overloaded SetNanColor method definitions in the base
+  // class.
+  using Superclass::SetNanColor;
+
   // Description:
   // Set the color to use when a NaN (not a number) is encountered.  This is an
   // RGB 3-tuple color of doubles in the range [0, 1].
-  // Overridden to pass the NanColor to the internal vtkLookupTable.
+  // Overridden to forward the NanColor to the internal vtkLookupTable.
   virtual void SetNanColor(double r, double g, double b);
-  virtual void SetNanColor(double rgb[3])
-    { this->SetNanColor(rgb[0], rgb[1], rgb[2]); }
 
-  virtual void SetNanColor(double r, double g, double b, double vtkNotUsed(a))
-    { this->SetNanColor(r, g, b); }
+  // Unhide overloaded SetBelowRangeColor() method definitions in the
+  // base class.
+  using Superclass::SetBelowRangeColor;
+
+  // Description:
+  // Overridden to forward the below-range color to the internal vtkLookupTable.
+  virtual void SetBelowRangeColor(double r, double g, double b, double a);
+
+  // Unhide overloaded SetAboveRangeColor method definitions in the
+  // base class.
+  using Superclass::SetAboveRangeColor;
+
+  // Description:
+  // Overridden to forward the above-range color to the internal vtkLookupTable.
+  virtual void SetAboveRangeColor(double r, double g, double b, double a);
+
+  // Description:
+  // Overridden to forward whether to use below-range color to internal vtkLookupTable.
+  virtual void SetUseBelowRangeColor(int use);
+
+  // Description:
+  // Overridden to forward whether to use below-range color to internal vtkLookupTable.
+  virtual void SetUseAboveRangeColor(int use);
 
   // Description:
   // This should return 1 if the subclass is using log scale for

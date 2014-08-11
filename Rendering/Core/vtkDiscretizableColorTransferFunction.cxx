@@ -284,6 +284,40 @@ void vtkDiscretizableColorTransferFunction::SetNanColor(double r, double g, doub
 }
 
 //-----------------------------------------------------------------------------
+void vtkDiscretizableColorTransferFunction::SetBelowRangeColor(double r,
+                                                               double g,
+                                                               double b,
+                                                               double a)
+{
+  this->LookupTable->SetBelowRangeColor(r, g, b, a);
+  this->Superclass::SetBelowRangeColor(r, g, b, a);
+}
+
+//-----------------------------------------------------------------------------
+void vtkDiscretizableColorTransferFunction::SetAboveRangeColor(double r,
+                                                               double g,
+                                                               double b,
+                                                               double a)
+{
+  this->LookupTable->SetAboveRangeColor(r, g, b, a);
+  this->Superclass::SetAboveRangeColor(r, g, b, a);
+}
+
+//-----------------------------------------------------------------------------
+void vtkDiscretizableColorTransferFunction::SetUseBelowRangeColor(int use)
+{
+  this->LookupTable->SetUseBelowRangeColor(use);
+  this->Superclass::SetUseBelowRangeColor(use);
+}
+
+//-----------------------------------------------------------------------------
+void vtkDiscretizableColorTransferFunction::SetUseAboveRangeColor(int use)
+{
+  this->LookupTable->SetUseAboveRangeColor(use);
+  this->Superclass::SetUseAboveRangeColor(use);
+}
+
+//-----------------------------------------------------------------------------
 unsigned char* vtkDiscretizableColorTransferFunction::MapValue(double v)
 {
   this->Build();
