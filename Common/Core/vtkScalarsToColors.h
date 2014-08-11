@@ -113,21 +113,12 @@ public:
   // Set whether the \a BelowRangeColor and the \a AboveRangeColor will be used
   // .Note that when using \a AboveRangeColor, the values will be mapped in the
   // given \a table range [min, max) (max excluded).
-  vtkSetMacro(UseBelowRangeColor, bool);
-  vtkGetMacro(UseBelowRangeColor, bool);
-  vtkBooleanMacro(UseBelowRangeColor, bool);
-  vtkSetMacro(UseAboveRangeColor, bool);
-  vtkGetMacro(UseAboveRangeColor, bool);
-  vtkBooleanMacro(UseAboveRangeColor, bool);
-
-  // Description:
-  // Helper method to set \a UseBelowRangeColor and \a UseAboveRangeColor at the same
-  // time.
-  void SetUseRangeColors(bool use)
-    {
-    this->SetUseBelowRangeColor(use);
-    this->SetUseAboveRangeColor(use);
-    }
+  vtkSetMacro(UseBelowRangeColor, int);
+  vtkGetMacro(UseBelowRangeColor, int);
+  vtkBooleanMacro(UseBelowRangeColor, int);
+  vtkSetMacro(UseAboveRangeColor, int);
+  vtkGetMacro(UseAboveRangeColor, int);
+  vtkBooleanMacro(UseAboveRangeColor, int);
 
   // Description:
   // Return the color as a pointer to 4 unsigned chars.
@@ -426,8 +417,8 @@ protected:
   double        AboveRangeColor[4];
   unsigned char BelowRangeColorChar[4];
   unsigned char AboveRangeColorChar[4];
-  bool          UseBelowRangeColor;
-  bool          UseAboveRangeColor;
+  int           UseBelowRangeColor;
+  int           UseAboveRangeColor;
 
   // Annotations of specific values.
   vtkAbstractArray* AnnotatedValues;

@@ -84,14 +84,16 @@ int TestLookupTable(int,char *[])
   TestVector4(table->GetBelowRangeColor(), 0.0, 0.5, 0.0, 1.0);
   TestVector4(table->GetAboveRangeColor(), 0.0, 0.0, 0.5, 1.0);
 
-  table->SetUseRangeColors(true);
+  table->SetUseBelowRangeColor(1);
+  table->SetUseAboveRangeColor(1);
   TestAssert(table->GetIndex(lo) == 0);
   TestAssert(table->GetIndex(hi) == 255);
   TestAssert(table->GetIndex(lo-tol) == vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(hi+tol) == vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(lo-step) == vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(hi+step) == vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
-  table->SetUseRangeColors(false);
+  table->SetUseBelowRangeColor(0);
+  table->SetUseAboveRangeColor(0);
 
   // log range test
   lo = pow(10.0,lo);
@@ -108,14 +110,16 @@ int TestLookupTable(int,char *[])
   TestAssert(table->GetIndex(lo*step) == 1);
   TestAssert(table->GetIndex(hi/step) == 254);
 
-  table->SetUseRangeColors(true);
+  table->SetUseBelowRangeColor(1);
+  table->SetUseAboveRangeColor(1);
   TestAssert(table->GetIndex(lo) == 0);
   TestAssert(table->GetIndex(hi) == 255);
   TestAssert(table->GetIndex(lo-tol) == vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(lo/step) == vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(hi+tol) == vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(hi*step) == vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
-  table->SetUseRangeColors(false);
+  table->SetUseBelowRangeColor(0);
+  table->SetUseAboveRangeColor(0);
 
   // negative log range
   double tmp = hi;
@@ -133,14 +137,16 @@ int TestLookupTable(int,char *[])
   TestAssert(table->GetIndex(lo*step) == 1);
   TestAssert(table->GetIndex(hi/step) == 254);
 
-  table->SetUseRangeColors(true);
+  table->SetUseBelowRangeColor(1);
+  table->SetUseAboveRangeColor(1);
   TestAssert(table->GetIndex(lo) == 0);
   TestAssert(table->GetIndex(hi) == 255);
   TestAssert(table->GetIndex(lo-tol) == vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(lo/step) == vtkScalarsToColors::BELOW_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(hi+tol) == vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
   TestAssert(table->GetIndex(hi*step) == vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX);
-  table->SetUseRangeColors(false);
+  table->SetUseBelowRangeColor(0);
+  table->SetUseAboveRangeColor(0);
 
   // == check error reporting ==
 
