@@ -296,6 +296,8 @@ double vtkLookupTable::GetOpacity(double v)
   return 1.0;
 }
 
+namespace {
+
 //----------------------------------------------------------------------------
 // There is a little more to this than simply taking the log10 of the
 // two range values: we do conversion of negative ranges to positive
@@ -450,6 +452,8 @@ inline unsigned char *vtkLinearLookupIndex(vtkIdType index,
 
   return &table[4*index];
 }
+
+} // end anonymous namespace
 
 //----------------------------------------------------------------------------
 void vtkLookupTable::GetLogRange(const double range[2], double log_range[2])
