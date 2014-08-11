@@ -814,17 +814,53 @@ void vtkColorTransferFunction::GetTable( double xStart, double xEnd,
     // Are we at the end? If so, just use the last value
     if ( idx >= numNodes )
       {
-      tptr[0] = (this->Clamping)?(lastR):(0.0);
-      tptr[1] = (this->Clamping)?(lastG):(0.0);
-      tptr[2] = (this->Clamping)?(lastB):(0.0);
+      if (this->Clamping)
+        {
+        if (this->GetUseAboveRangeColor())
+          {
+          tptr[0] = this->GetAboveRangeColor()[0];
+          tptr[1] = this->GetAboveRangeColor()[1];
+          tptr[2] = this->GetAboveRangeColor()[2];
+          }
+        else
+          {
+          tptr[0] = lastR;
+          tptr[1] = lastG;
+          tptr[2] = lastB;
+          }
+        }
+      else // No clamping
+        {
+        tptr[0] = 0.0;
+        tptr[1] = 0.0;
+        tptr[2] = 0.0;
+        }
       }
     // Are we before the first node? If so, duplicate this node's values.
     // We have to deal with -inf here.
     else if ( idx == 0 && (x < xStart || (vtkMath::IsInf(x) && x < 0)) )
       {
-      tptr[0] = (this->Clamping)?(this->Internal->Nodes[0]->R):(0.0);
-      tptr[1] = (this->Clamping)?(this->Internal->Nodes[0]->G):(0.0);
-      tptr[2] = (this->Clamping)?(this->Internal->Nodes[0]->B):(0.0);
+      if (this->Clamping)
+        {
+        if (this->GetUseBelowRangeColor())
+          {
+          tptr[0] = this->GetBelowRangeColor()[0];
+          tptr[1] = this->GetBelowRangeColor()[1];
+          tptr[2] = this->GetBelowRangeColor()[2];
+          }
+        else
+          {
+          tptr[0] = this->Internal->Nodes[0]->R;
+          tptr[1] = this->Internal->Nodes[0]->G;
+          tptr[2] = this->Internal->Nodes[0]->B;
+          }
+        }
+      else // No clamping
+        {
+        tptr[0] = 0.0;
+        tptr[1] = 0.0;
+        tptr[2] = 0.0;
+        }
       }
     // Are we right at the first node or very near it? Is so, use first node value.
     else if ( idx == 0 && vtkMathUtilities::FuzzyCompare(x, xStart, 1.0e-6) )
