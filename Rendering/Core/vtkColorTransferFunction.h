@@ -176,6 +176,10 @@ public:
   void SetScaleToLog10() { this->SetScale(VTK_CTF_LOG10); };
   vtkGetMacro(Scale,int);
 
+  // Unhide overloaded SetNanColor method definitions in the base
+  // class.
+  using Superclass::SetNanColor;
+
   // Description:
   // Set the color to use when a NaN (not a number) is encountered.  This is an
   // RGB 3-tuple color of doubles in the range [0,1]. Overridden from base class
@@ -187,10 +191,9 @@ public:
   // \deprecated Use SetNanColor(double r, double g, double b, double a) instead.
   virtual void SetNanColor(double r, double g, double b);
 
-  // Description:
-  // Overridden from superclass to avoid shadowed method warning.
-  // The alpha component is ignored.
-  virtual void SetNanColor(double r, double g, double b, double vtkNotUsed(a));
+  // Unhide overloaded GetNanColor method definitions in the base
+  // class.
+  using Superclass::GetNanColor;
 
   // Description:
   // Provided for backwards compatibility.
@@ -201,11 +204,6 @@ public:
   // Provided for backwards compatibility.
   // \deprecated Use GetNanColor(double &r, double &g, double &b, double &a) instead.
   virtual void GetNanColor(double &r, double &g, double &b);
-
-  // Description:
-  // Overridden from superclass to avoid shadowed method warning.
-  // Alpha component returned is always 1.0.
-  virtual void GetNanColor(double &r, double &g, double &b, double &a);
 
   // Description:
   // Overridden from superclass to avoid shadowed method warning.
@@ -326,4 +324,3 @@ private:
 };
 
 #endif
-

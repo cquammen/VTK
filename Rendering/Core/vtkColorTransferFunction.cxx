@@ -1186,15 +1186,6 @@ void vtkColorTransferFunction::SetNanColor(double r, double g, double b)
 }
 
 //----------------------------------------------------------------------------
-void vtkColorTransferFunction::SetNanColor(double r,
-                                           double g,
-                                           double b,
-                                           double vtkNotUsed(a))
-{
-  this->SetNanColor(r, g, b);
-}
-
-//----------------------------------------------------------------------------
 void vtkColorTransferFunction::GetNanColor(double rgb[4])
 {
   rgb[0] = this->NanColor[0];
@@ -1209,14 +1200,6 @@ void vtkColorTransferFunction::GetNanColor(double &r, double &g, double &b)
   r = this->NanColor[0];
   g = this->NanColor[1];
   b = this->NanColor[2];
-}
-
-//----------------------------------------------------------------------------
-void vtkColorTransferFunction::GetNanColor(double &r, double &g, double &b, double &a)
-{
-  double dummy = 0.0;
-  this->Superclass::GetNanColor(r, g, b, dummy);
-  a = 1.0;
 }
 
 //----------------------------------------------------------------------------
