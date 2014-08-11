@@ -389,9 +389,6 @@ inline vtkIdType vtkLinearIndexLookupMain(double v,
                                           double shift, double scale,
                                           bool useMin, bool useMax)
 {
-  vtkIdType maxId = static_cast<vtkIdType>(maxIndex);
-
-  // do not change this code: it compiles into min/max opcodes
   if (vtkMath::IsNan(v))
     {
     return vtkScalarsToColors::NAN_COLOR_INDEX;
@@ -402,7 +399,7 @@ inline vtkIdType vtkLinearIndexLookupMain(double v,
     }
   else if (v > range[1] && v-range[1] > DBL_EPSILON)
     {
-    return (useMax ? vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX : maxId);
+    return (useMax ? vtkScalarsToColors::ABOVE_RANGE_COLOR_INDEX : maxIndex);
     }
 
   vtkIdType findx = static_cast<vtkIdType>((v + shift)*scale);
@@ -414,9 +411,9 @@ inline vtkIdType vtkLinearIndexLookupMain(double v,
     {
     findx = 0;
     }
-  else if (findx > maxId)
+  else if (findx > maxIndex)
     {
-    findx = maxId;
+    findx = maxIndex;
     }
 
   return findx;
@@ -649,9 +646,8 @@ void vtkLookupTableMapData(vtkLookupTable *self, T *input,
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetBelowRangeColor(), minColorVec);
   vtkScalarsToColors::GetColorAsUnsignedChars(self->GetAboveRangeColor(), maxColorVec);
 
-  unsigned char black[4] = {0, 0, 0, 255};
-  unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : black;
-  unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : black;
+  unsigned char* minColor = self->GetUseBelowRangeColor() ? minColorVec : NULL;
+  unsigned char* maxColor = self->GetUseAboveRangeColor() ? maxColorVec : NULL;
 
   double alpha = self->GetAlpha();
 
