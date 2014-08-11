@@ -470,6 +470,7 @@ void vtkScalarsToColorsPainter::UpdateColorTextureMap(double alpha,
     // Create a dummy ramp of scalars.
     // In the future, we could extend vtkScalarsToColors.
     vtkIdType numberOfColors = this->LookupTable->GetNumberOfAvailableColors();
+    numberOfColors += 2; // For out-of-range colors
     vtkIdType textureSize = this->GetTextureSizeLimit();
     if(numberOfColors > textureSize)
       {
@@ -479,7 +480,7 @@ void vtkScalarsToColorsPainter::UpdateColorTextureMap(double alpha,
       {
       numberOfColors = 2;
       }
-    double k = (range[1]-range[0]) / (numberOfColors-1);
+    double k = (range[1]-range[0]) / (numberOfColors-1-2);
     VTK_CREATE(vtkDoubleArray, scalarTable);
     // Size of lookup is actual 2*numberOfColors because one dimension
     // has actual values, then NaNs.
@@ -488,7 +489,7 @@ void vtkScalarsToColorsPainter::UpdateColorTextureMap(double alpha,
     // The actual scalar values.
     for (int i = 0; i < numberOfColors; ++i)
       {
-      *scalarTablePtr = range[0] + i * k;
+      *scalarTablePtr = range[0] + i * k - k; // minus k for below range color
       if (use_log_scale)
         {
         *scalarTablePtr = pow(10.0, *scalarTablePtr);
@@ -726,9 +727,18 @@ void CreateColorTextureCoordinates(T* input, float* output,
                                    vtkIdType numScalars, int numComps,
                                    int component, double* range,
                                    const double* table_range,
+                                   int tableNumberOfColors,
                                    bool use_log_scale)
 {
-  double inv_range_width = 1.0 / (range[1]-range[0]);
+  // We have to change the range used for computing texture
+  // coordinates slightly to accomodate the special above- and
+  // below-range colors that are the first and last texels,
+  // respectively.
+  double scalar_texel_width = (range[1] - range[0]) / static_cast<double>(tableNumberOfColors);
+  double padded_range[2];
+  padded_range[0] = range[0] - scalar_texel_width;
+  padded_range[1] = range[1] + scalar_texel_width;
+  double inv_range_width = 1.0 / (padded_range[1] - padded_range[0]);
 
   if (component < 0 || component >= numComps)
     {
@@ -747,7 +757,7 @@ void CreateColorTextureCoordinates(T* input, float* output,
         magnitude = vtkLookupTable::ApplyLogScale(
           magnitude, table_range, range);
         }
-      ScalarToTextureCoordinate(magnitude, range[0], inv_range_width,
+      ScalarToTextureCoordinate(magnitude, padded_range[0], inv_range_width,
                                 output[0], output[1]);
       output += 2;
       }
@@ -763,7 +773,7 @@ void CreateColorTextureCoordinates(T* input, float* output,
         input_value = vtkLookupTable::ApplyLogScale(
           input_value, table_range, range);
         }
-      ScalarToTextureCoordinate(input_value, range[0], inv_range_width,
+      ScalarToTextureCoordinate(input_value, padded_range[0], inv_range_width,
                                 output[0], output[1]);
       output += 2;
       input = input + numComps;
@@ -832,6 +842,7 @@ void vtkScalarsToColorsPainter::MapScalarsToTexture(
                                       tcptr, num, numComps,
                                       scalarComponent, range,
                                       this->LookupTable->GetRange(),
+                                      this->LookupTable->GetNumberOfAvailableColors(),
                                       use_log_scale)
       );
     case VTK_BIT:
