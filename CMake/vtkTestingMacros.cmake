@@ -54,13 +54,19 @@ function(_vtk_test_parse_args options source_ext)
       set(name "${CMAKE_MATCH_1}")
       string(REPLACE "," ";" _${name}_options "${CMAKE_MATCH_2}")
       list(APPEND names ${name})
+      set(current_name ${name})
     else()
       list(APPEND args ${arg})
+      if(current_name)
+        list(APPEND ${current_name}_ARGS ${arg})
+      endif()
     endif()
   endforeach()
 
   foreach(name IN LISTS names)
     set(_${name}_options "${_${name}_options}"
+      PARENT_SCOPE)
+    set(${name}_ARGS "${${name}_ARGS}"
       PARENT_SCOPE)
   endforeach()
   set(options "${global_options}"
@@ -173,7 +179,6 @@ function(vtk_add_test_mpi exename _tests)
               $<TARGET_FILE:${exename}>
               ${name}
               ${_D} ${_T} ${_V}
-              ${args}
               ${${vtk-module}_ARGS}
               ${${name}_ARGS}
               ${VTK_MPI_POSTFLAGS})
@@ -284,7 +289,6 @@ function(vtk_add_test_cxx exename _tests)
       NAME    ${prefix}Cxx-${vtk_test_prefix}${test_name}
       COMMAND $<TARGET_FILE:${exename}>
               ${test_file}
-              ${args}
               ${${prefix}_ARGS}
               ${${name}_ARGS}
               ${_D} ${_T} ${_V})
@@ -430,7 +434,6 @@ function(vtk_add_test_python)
               ${VTK_PYTHON_ARGS}
               ${rtImageTest}
               ${CMAKE_CURRENT_SOURCE_DIR}/${test_file}.py
-              ${args}
               ${${vtk-module}_ARGS}
               ${${name}_ARGS}
               ${_D} ${_B} ${_T} ${_V} ${_A})
@@ -534,7 +537,6 @@ function(vtk_add_test_tcl)
       COMMAND ${VTK_TCL_EXE}
               ${rtImageTest}
               ${CMAKE_CURRENT_SOURCE_DIR}/${test_file}.tcl
-              ${args}
               ${${vtk-module}_ARGS}
               ${${name}_ARGS}
               ${_D} ${_T} ${_V} ${_A})
