@@ -120,7 +120,7 @@ public:
     vtkPoints* outputPoints = this->Output->GetPoints();
     vtkPointData* outputPD = this->Output->GetPointData();
     vtkIdTypeArray* pointRegionIds =
-    vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
+      vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
     for (int p = 0; p < this->SubController->GetNumberOfProcesses(); ++p)
     {
       pointsForMyNeighbors[p] = std::vector<double>();
