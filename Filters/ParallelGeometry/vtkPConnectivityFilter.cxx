@@ -63,7 +63,8 @@ public:
   /**
    * Have all ranks with data exchange their bounding boxes.
    */
-  void ExchangeBounds(std::vector< double > & allBounds)
+  template< typename TPoint >
+  void ExchangeBounds(std::vector< TPoint > & allBounds)
   {
     //Inflate the bounds a bit to deal with floating point precision.
     double bounds[6];
@@ -72,7 +73,13 @@ public:
     myBoundingBox.Inflate();
     myBoundingBox.GetBounds(bounds);
     allBounds.resize(6*this->SubController->GetNumberOfProcesses());
-    this->SubController->AllGather(bounds, &allBounds[0], 6);
+
+    TPoint typedBounds[6];
+    for (int i = 0; i < 6; ++i)
+    {
+      typedBounds[i] = static_cast<TPoint>(bounds[i]);
+    }
+    this->SubController->AllGather(typedBounds, &allBounds[0], 6);
   }
 
   /**
