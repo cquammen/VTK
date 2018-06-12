@@ -132,9 +132,10 @@ public:
   /**
    * Get points and region ids to send to neighbors.
    */
-  void GatherPointsAndRegionIds(const std::vector< double > & allBounds,
+  template< typename TPoint >
+  void GatherPointsAndRegionIds(const std::vector< TPoint > & allBounds,
                                 const std::vector< int > & regionStarts,
-                                std::map< int, std::vector< double > > & pointsForMyNeighbors,
+                                std::map< int, std::vector< TPoint > > & pointsForMyNeighbors,
                                 std::map< int, std::vector< vtkIdType > > & regionIdsForMyNeighbors)
   {
     // For all neighbors, gather up points and region IDs that they will
@@ -147,17 +148,23 @@ public:
       vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
     for (int p = 0; p < this->SubController->GetNumberOfProcesses(); ++p)
     {
-      pointsForMyNeighbors[p] = std::vector<double>();
+      pointsForMyNeighbors[p] = std::vector<TPoint>();
       regionIdsForMyNeighbors[p] = std::vector<vtkIdType>();
-      vtkBoundingBox neighborBB(&allBounds[6*p]);
+
+      double neighborBounds[6];
+      for (int i = 0; i < 6; ++i)
+      {
+        neighborBounds[i] = static_cast<double>(allBounds[6*p + i]);
+      }
+      vtkBoundingBox neighborBB(neighborBounds);
       for (vtkIdType id = 0; id < this->Output->GetNumberOfPoints(); ++id)
       {
         double pt[3];
         outputPoints->GetPoint(id, pt);
-
         if (neighborBB.ContainsPoint(pt))
         {
           auto & sendPoints = pointsForMyNeighbors[p];
+
           sendPoints.insert(sendPoints.end(), pt, pt+3);
 
           vtkIdType regionId = pointRegionIds->GetTypedComponent(id, 0);
