@@ -85,18 +85,22 @@ public:
   /**
    * Determine this rank's neighbors from the bounding box information.
    */
-  void FindMyNeighbors(const std::vector<double> & allBounds, std::vector<int> & myNeighbors)
+  template< typename TPoint >
+  void FindMyNeighbors(const std::vector<TPoint> & allBounds, std::vector<int> & myNeighbors)
   {
     myNeighbors.clear();
 
+    int myRank = this->SubController->GetLocalProcessId();
     double bounds[6];
-    this->Output->GetBounds(bounds);
+    for (int i = 0; i < 6; ++i)
+    {
+      bounds[i] = static_cast<double>(allBounds[6*myRank + i]);
+    }
     vtkBoundingBox myBoundingBox(bounds);
     myBoundingBox.Inflate();
     myBoundingBox.GetBounds(bounds);
 
     // Identify neighboring ranks.
-    int myRank = this->SubController->GetLocalProcessId();
     for (int p = 0; p < this->SubController->GetNumberOfProcesses(); ++p)
     {
       if (p == myRank)
@@ -104,7 +108,12 @@ public:
         continue;
       }
 
-      vtkBoundingBox potentialNeighborBoundingBox(&allBounds[6*p]);
+      double potentialBounds[6];
+      for (int i = 0; i < 6; ++i)
+      {
+        potentialBounds[i] = static_cast<double>(allBounds[6*p + i]);
+      }
+      vtkBoundingBox potentialNeighborBoundingBox(potentialBounds);
       if (myBoundingBox.Intersects(potentialNeighborBoundingBox))
       {
         myNeighbors.push_back(p);
