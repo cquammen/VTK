@@ -41,7 +41,10 @@
 #include <set>
 #include <vector>
 
-class vtkPConnectivityFilter::vtkInternals
+namespace
+{
+
+struct Worker
 {
 public:
   /**
@@ -55,8 +58,8 @@ public:
   vtkWeakPointer<vtkPointSet> Output;
 
 
-  vtkInternals() {}
-  ~vtkInternals()
+  Worker() {}
+  ~Worker()
   {
   }
 
@@ -286,6 +289,8 @@ public:
   }
 };
 
+} // end anonymous namespace
+
 vtkStandardNewMacro(vtkPConnectivityFilter);
 
 vtkPConnectivityFilter::vtkPConnectivityFilter()
@@ -365,8 +370,8 @@ int vtkPConnectivityFilter::RequestData(
   subController.TakeReference(
     vtkMPIController::SafeDownCast(globalController)->PartitionController(hasCells, 0));
 
-  vtkInternals* MyInternals = new vtkInternals;
-  MyInternals->SubController = subController;
+  Worker worker;
+  worker.SubController = subController;
 
   // From here on we deal only with the SubController
   numRanks = subController->GetNumberOfProcesses();
@@ -378,7 +383,7 @@ int vtkPConnectivityFilter::RequestData(
   // Get the output
   vtkPointSet *output = vtkPointSet::SafeDownCast(
     outInfo->Get(vtkDataObject::DATA_OBJECT()));
-  MyInternals->Output = output;
+  worker.Output = output;
 
   // Check that all ranks succeeded in local connectivity.
   int globalSuccess = 0;
@@ -408,33 +413,31 @@ int vtkPConnectivityFilter::RequestData(
   // determine neighboring ranks and to minimize the number of points sent
   // to neighboring processors.
   std::vector<double> allBounds;
-  MyInternals->ExchangeBounds(allBounds);
+  worker.ExchangeBounds(allBounds);
 
   // Identify neighboring ranks.
   std::vector<int> myNeighbors;
-  MyInternals->FindMyNeighbors(allBounds, myNeighbors);
+  worker.FindMyNeighbors(allBounds, myNeighbors);
 
   // Create a map from neighbor to data set boundary points and region IDs
   std::map< int, std::vector< double > > pointsForMyNeighbors;
   std::map< int, std::vector< vtkIdType > > regionIdsForMyNeighbors;
-  MyInternals->GatherPointsAndRegionIds(allBounds, regionStarts,
-                                            pointsForMyNeighbors,
-                                            regionIdsForMyNeighbors);
+  worker.GatherPointsAndRegionIds(allBounds, regionStarts,
+                                  pointsForMyNeighbors,
+                                  regionIdsForMyNeighbors);
 
   std::map< int, int > sendLengths;
   std::map< int, int > recvLengths;
-  MyInternals->ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
-                                                sendLengths, recvLengths);
+  worker.ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
+                                      sendLengths, recvLengths);
 
   std::map< int, std::vector< double > > pointsFromMyNeighbors;
-  MyInternals->SendReceivePoints(sendLengths, pointsForMyNeighbors,
-                                     recvLengths, pointsFromMyNeighbors);
+  worker.SendReceivePoints(sendLengths, pointsForMyNeighbors,
+                           recvLengths, pointsFromMyNeighbors);
 
   std::map< int, std::vector< vtkIdType > > regionIdsFromMyNeighbors;
-  MyInternals->SendReceiveRegionIds(sendLengths, regionIdsForMyNeighbors,
-                                        recvLengths, regionIdsFromMyNeighbors);
-
-  delete MyInternals;
+  worker.SendReceiveRegionIds(sendLengths, regionIdsForMyNeighbors,
+                              recvLengths, regionIdsFromMyNeighbors);
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

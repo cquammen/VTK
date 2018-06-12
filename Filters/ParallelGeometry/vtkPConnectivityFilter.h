@@ -150,8 +150,6 @@ protected:
 private:
   vtkPConnectivityFilter(const vtkPConnectivityFilter&) = delete;
   void operator=(const vtkPConnectivityFilter&) = delete;
-
-  class vtkInternals;
 };
 
 #endif
