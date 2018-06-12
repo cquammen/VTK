@@ -57,6 +57,11 @@ public:
    */
   vtkWeakPointer<vtkPointSet> Output;
 
+  /**
+   * Vector type for holding links from one region to another.
+   */
+  typedef std::vector< std::set< vtkIdType > > RegionLinksType;
+  RegionLinksType Links;
 
   Worker() {}
   ~Worker()
@@ -445,8 +450,7 @@ int vtkPConnectivityFilter::RequestData(
 
   // Links from local region ids to remote region ids. Vector index is local
   // region id, and the set contains linked remote ids.
-  typedef std::vector< std::set< vtkIdType > > RegionLinksType;
-  RegionLinksType links(regionStarts[numRanks]);
+  worker.Links.resize(regionStarts[numRanks]);
 
   if (output->GetNumberOfPoints() > 0)
   {
@@ -495,22 +499,27 @@ int vtkPConnectivityFilter::RequestData(
 
         vtkIdType remoteRegionId = regionIdsFromMyNeighbors[rank][ptId];
 
-        if (links[localRegionId].count(remoteRegionId) == 0)
+        if (worker.Links[localRegionId].count(remoteRegionId) == 0)
         {
           // Link not already established. Add it here.
-          links[localRegionId].insert(remoteRegionId);
+          worker.Links[localRegionId].insert(remoteRegionId);
         }
       }
     }
   }
 
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
   // Set up storage for gathering all links from all processors. This is an
   // interleaved vector containing one regionId and its connected regionId.
   std::vector< vtkIdType > localLinks;
-  for (size_t i = 0; i < links.size(); ++i)
+  for (size_t i = 0; i < worker.Links.size(); ++i)
   {
-    for (std::set< vtkIdType >::iterator iter = std::begin(links[i]);
-         iter != std::end(links[i]); ++iter)
+    for (std::set< vtkIdType >::iterator iter = std::begin(worker.Links[i]);
+         iter != std::end(worker.Links[i]); ++iter)
     {
       localLinks.push_back(static_cast<vtkIdType>(i));
       localLinks.push_back(*iter);
