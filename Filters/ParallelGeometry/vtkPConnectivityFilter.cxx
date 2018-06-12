@@ -14,6 +14,7 @@
 =========================================================================*/
 #include "vtkPConnectivityFilter.h"
 
+#include "vtkArrayDispatch.h"
 #include "vtkBoundingBox.h"
 #include "vtkCellData.h"
 #include "vtkCellIterator.h"
@@ -46,7 +47,6 @@ namespace
 
 struct Worker
 {
-public:
   /**
    * MPI controller for ranks with data.
    */
@@ -58,14 +58,112 @@ public:
   vtkWeakPointer<vtkPointSet> Output;
 
   /**
+   * Starting region number on each rank.
+   */
+  std::vector<int> RegionStarts;
+
+  /**
    * Vector type for holding links from one region to another.
    */
   typedef std::vector< std::set< vtkIdType > > RegionLinksType;
   RegionLinksType Links;
 
-  Worker() {}
-  ~Worker()
+  template<typename PointArrayType>
+  void operator()(PointArrayType* pointArray)
   {
+    // Exchange bounding boxes of the data on each rank. These are used to
+    // determine neighboring ranks and to minimize the number of points sent
+    // to neighboring processors.
+    std::vector<double> allBounds;
+    this->ExchangeBounds(allBounds);
+
+    // Identify neighboring ranks.
+    std::vector<int> myNeighbors;
+    this->FindMyNeighbors(allBounds, myNeighbors);
+
+    // Create a map from neighbor to data set boundary points and region IDs
+    std::map< int, std::vector< double > > pointsForMyNeighbors;
+    std::map< int, std::vector< vtkIdType > > regionIdsForMyNeighbors;
+    this->GatherPointsAndRegionIds(allBounds, this->RegionStarts,
+                                  pointsForMyNeighbors,
+                                  regionIdsForMyNeighbors);
+
+    std::map< int, int > sendLengths;
+    std::map< int, int > recvLengths;
+    this->ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
+                                        sendLengths, recvLengths);
+
+    std::map< int, std::vector< double > > pointsFromMyNeighbors;
+    this->SendReceivePoints(sendLengths, pointsForMyNeighbors,
+                            recvLengths, pointsFromMyNeighbors);
+
+    std::map< int, std::vector< vtkIdType > > regionIdsFromMyNeighbors;
+    this->SendReceiveRegionIds(sendLengths, regionIdsForMyNeighbors,
+                               recvLengths, regionIdsFromMyNeighbors);
+
+    int numRanks = this->SubController->GetNumberOfProcesses();
+    int myRank = this->SubController->GetLocalProcessId();
+
+    // Links from local region ids to remote region ids. Vector index is local
+    // region id, and the set contains linked remote ids.
+    this->Links.resize(this->RegionStarts[numRanks]);
+
+    if (this->Output->GetNumberOfPoints() > 0)
+    {
+      // Now resolve the points from our neighbors to local points if possible.
+      vtkNew<vtkKdTreePointLocator> localPointLocator;
+      localPointLocator->SetDataSet(this->Output);
+      localPointLocator->BuildLocator();
+
+      // Map the local and remote ids
+      for (int rank = 0; rank < numRanks; ++rank)
+      {
+        if (rank == myRank)
+        {
+          continue;
+        }
+
+        for (size_t ptId = 0; ptId < pointsFromMyNeighbors[rank].size()/3; ++ptId)
+        {
+          double x[3];
+          x[0] = pointsFromMyNeighbors[rank][3*ptId + 0];
+          x[1] = pointsFromMyNeighbors[rank][3*ptId + 1];
+          x[2] = pointsFromMyNeighbors[rank][3*ptId + 2];
+
+          vtkIdType localId = localPointLocator->FindClosestPoint(x);
+          // Skip local ghost points as we do not need ghost-ghost links.
+          vtkUnsignedCharArray* pointGhostArray = this->Output->GetPointGhostArray();
+          if (pointGhostArray && pointGhostArray->GetTypedComponent(localId, 0) &
+              vtkDataSetAttributes::DUPLICATEPOINT)
+          {
+            continue;
+          }
+          double y[3];
+          this->Output->GetPoints()->GetPoint(localId, y);
+          double dist2 = vtkMath::Distance2BetweenPoints(x, y);
+          if (dist2 > 1e-6)
+          {
+            // Nearest point is too far away, move on.
+            continue;
+          }
+
+          // Save association between local and remote ids
+          vtkPointData* outputPD = this->Output->GetPointData();
+          vtkIdTypeArray* localRegionIds =
+            vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
+          vtkIdType localRegionId = localRegionIds->GetTypedComponent(localId, 0) +
+            this->RegionStarts[myRank];
+
+          vtkIdType remoteRegionId = regionIdsFromMyNeighbors[rank][ptId];
+
+          if (this->Links[localRegionId].count(remoteRegionId) == 0)
+          {
+            // Link not already established. Add it here.
+            this->Links[localRegionId].insert(remoteRegionId);
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -410,110 +508,17 @@ int vtkPConnectivityFilter::RequestData(
   // Exchange number of regions. We assume the RegionIDs are contiguous.
   int numRegions = this->GetNumberOfExtractedRegions();
   std::vector<int> regionCounts(numRanks, 0);
-  std::vector<int> regionStarts(numRanks + 1, 0);
+  worker.RegionStarts.resize(numRanks + 1);
   subController->AllGather(&numRegions, &regionCounts[0], 1);
 
   // Compute starting region Ids on each rank
+  worker.RegionStarts[0] = 0;
   std::partial_sum(regionCounts.begin(), regionCounts.end(),
-    regionStarts.begin() + 1);
+    worker.RegionStarts.begin() + 1);
 
   vtkPointData* outputPD = output->GetPointData();
-  vtkIdTypeArray* pointRegionIds =
-    vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
 
-  // Exchange bounding boxes of the data on each rank. These are used to
-  // determine neighboring ranks and to minimize the number of points sent
-  // to neighboring processors.
-  std::vector<double> allBounds;
-  worker.ExchangeBounds(allBounds);
-
-  // Identify neighboring ranks.
-  std::vector<int> myNeighbors;
-  worker.FindMyNeighbors(allBounds, myNeighbors);
-
-  // Create a map from neighbor to data set boundary points and region IDs
-  std::map< int, std::vector< double > > pointsForMyNeighbors;
-  std::map< int, std::vector< vtkIdType > > regionIdsForMyNeighbors;
-  worker.GatherPointsAndRegionIds(allBounds, regionStarts,
-                                  pointsForMyNeighbors,
-                                  regionIdsForMyNeighbors);
-
-  std::map< int, int > sendLengths;
-  std::map< int, int > recvLengths;
-  worker.ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
-                                      sendLengths, recvLengths);
-
-  std::map< int, std::vector< double > > pointsFromMyNeighbors;
-  worker.SendReceivePoints(sendLengths, pointsForMyNeighbors,
-                           recvLengths, pointsFromMyNeighbors);
-
-  std::map< int, std::vector< vtkIdType > > regionIdsFromMyNeighbors;
-  worker.SendReceiveRegionIds(sendLengths, regionIdsForMyNeighbors,
-                              recvLengths, regionIdsFromMyNeighbors);
-
-  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-  //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  // Links from local region ids to remote region ids. Vector index is local
-  // region id, and the set contains linked remote ids.
-  worker.Links.resize(regionStarts[numRanks]);
-
-  if (output->GetNumberOfPoints() > 0)
-  {
-    // Now resolve the points from our neighbors to local points if possible.
-    vtkNew<vtkKdTreePointLocator> localPointLocator;
-    localPointLocator->SetDataSet(output);
-    localPointLocator->BuildLocator();
-
-    // Map the local and remote ids
-    for (int rank = 0; rank < numRanks; ++rank)
-    {
-      if (rank == myRank)
-      {
-        continue;
-      }
-
-      for (size_t ptId = 0; ptId < pointsFromMyNeighbors[rank].size()/3; ++ptId)
-      {
-        double x[3];
-        x[0] = pointsFromMyNeighbors[rank][3*ptId + 0];
-        x[1] = pointsFromMyNeighbors[rank][3*ptId + 1];
-        x[2] = pointsFromMyNeighbors[rank][3*ptId + 2];
-
-        vtkIdType localId = localPointLocator->FindClosestPoint(x);
-        // Skip local ghost points as we do not need ghost-ghost links.
-        vtkUnsignedCharArray* pointGhostArray = output->GetPointGhostArray();
-        if (pointGhostArray && pointGhostArray->GetTypedComponent(localId, 0) &
-            vtkDataSetAttributes::DUPLICATEPOINT)
-        {
-          continue;
-        }
-        double y[3];
-        output->GetPoints()->GetPoint(localId, y);
-        double dist2 = vtkMath::Distance2BetweenPoints(x, y);
-        if (dist2 > 1e-6)
-        {
-          // Nearest point is too far away, move on.
-          continue;
-        }
-
-        // Save association between local and remote ids
-        vtkIdTypeArray* localRegionIds =
-          vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
-        vtkIdType localRegionId = localRegionIds->GetTypedComponent(localId, 0) +
-          regionStarts[myRank];
-
-        vtkIdType remoteRegionId = regionIdsFromMyNeighbors[rank][ptId];
-
-        if (worker.Links[localRegionId].count(remoteRegionId) == 0)
-        {
-          // Link not already established. Add it here.
-          worker.Links[localRegionId].insert(remoteRegionId);
-        }
-      }
-    }
-  }
+  worker(output->GetPoints()->GetData());
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -564,8 +569,8 @@ int vtkPConnectivityFilter::RequestData(
   } RegionNode;
 
   size_t linkIdx = 0;
-  std::vector< RegionNode > regionNodes(regionStarts[numRanks]);
-  for (vtkIdType regionId = 0; regionId < regionStarts[numRanks]; ++regionId)
+  std::vector< RegionNode > regionNodes(worker.RegionStarts[numRanks]);
+  for (vtkIdType regionId = 0; regionId < worker.RegionStarts[numRanks]; ++regionId)
   {
     regionNodes[regionId].OriginalRegionId = regionId;
     regionNodes[regionId].CurrentRegionId = regionId;
@@ -637,14 +642,16 @@ int vtkPConnectivityFilter::RequestData(
   for (vtkIdType i = 0; i < output->GetNumberOfCells(); ++i)
   {
     // Offset the cellRegionId by the starting region id on this rank.
-    vtkIdType cellRegionId = cellRegionIds->GetValue(i) + regionStarts[myRank];
+    vtkIdType cellRegionId = cellRegionIds->GetValue(i) + worker.RegionStarts[myRank];
     cellRegionIds->SetValue(i, regionNodes[cellRegionId].CurrentRegionId);
   }
 
+  vtkIdTypeArray* pointRegionIds =
+    vtkIdTypeArray::SafeDownCast(outputPD->GetArray("RegionId"));
   for (vtkIdType i = 0; i < output->GetNumberOfPoints(); ++i)
   {
     // Offset the pointRegionId by the starting region id on this rank.
-    vtkIdType pointRegionId = pointRegionIds->GetValue(i) + regionStarts[myRank];
+    vtkIdType pointRegionId = pointRegionIds->GetValue(i) + worker.RegionStarts[myRank];
     pointRegionIds->SetValue(i, regionNodes[pointRegionId].CurrentRegionId);
   }
 
