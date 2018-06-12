@@ -281,12 +281,10 @@ vtkStandardNewMacro(vtkPConnectivityFilter);
 
 vtkPConnectivityFilter::vtkPConnectivityFilter()
 {
-  this->Internals = new vtkInternals;
 }
 
 vtkPConnectivityFilter::~vtkPConnectivityFilter()
 {
-  delete this->Internals;
 }
 
 int vtkPConnectivityFilter::RequestData(
@@ -358,7 +356,8 @@ int vtkPConnectivityFilter::RequestData(
   subController.TakeReference(
     vtkMPIController::SafeDownCast(globalController)->PartitionController(hasCells, 0));
 
-  this->Internals->SubController = subController;
+  vtkInternals* MyInternals = new vtkInternals;
+  MyInternals->SubController = subController;
 
   // From here on we deal only with the SubController
   numRanks = subController->GetNumberOfProcesses();
@@ -370,7 +369,7 @@ int vtkPConnectivityFilter::RequestData(
   // Get the output
   vtkPointSet *output = vtkPointSet::SafeDownCast(
     outInfo->Get(vtkDataObject::DATA_OBJECT()));
-  this->Internals->Output = output;
+  MyInternals->Output = output;
 
   // Check that all ranks succeeded in local connectivity.
   int globalSuccess = 0;
@@ -400,31 +399,33 @@ int vtkPConnectivityFilter::RequestData(
   // determine neighboring ranks and to minimize the number of points sent
   // to neighboring processors.
   std::vector<double> allBounds;
-  this->Internals->ExchangeBounds(allBounds);
+  MyInternals->ExchangeBounds(allBounds);
 
   // Identify neighboring ranks.
   std::vector<int> myNeighbors;
-  this->Internals->FindMyNeighbors(allBounds, myNeighbors);
+  MyInternals->FindMyNeighbors(allBounds, myNeighbors);
 
   // Create a map from neighbor to data set boundary points and region IDs
   std::map< int, std::vector< double > > pointsForMyNeighbors;
   std::map< int, std::vector< vtkIdType > > regionIdsForMyNeighbors;
-  this->Internals->GatherPointsAndRegionIds(allBounds, regionStarts,
+  MyInternals->GatherPointsAndRegionIds(allBounds, regionStarts,
                                             pointsForMyNeighbors,
                                             regionIdsForMyNeighbors);
 
   std::map< int, int > sendLengths;
   std::map< int, int > recvLengths;
-  this->Internals->ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
+  MyInternals->ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
                                                 sendLengths, recvLengths);
 
   std::map< int, std::vector< double > > pointsFromMyNeighbors;
-  this->Internals->SendReceivePoints(sendLengths, pointsForMyNeighbors,
+  MyInternals->SendReceivePoints(sendLengths, pointsForMyNeighbors,
                                      recvLengths, pointsFromMyNeighbors);
 
   std::map< int, std::vector< vtkIdType > > regionIdsFromMyNeighbors;
-  this->Internals->SendReceiveRegionIds(sendLengths, regionIdsForMyNeighbors,
+  MyInternals->SendReceiveRegionIds(sendLengths, regionIdsForMyNeighbors,
                                         recvLengths, regionIdsFromMyNeighbors);
+
+  delete MyInternals;
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

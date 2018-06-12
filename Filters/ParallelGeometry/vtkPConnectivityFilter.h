@@ -152,7 +152,6 @@ private:
   void operator=(const vtkPConnectivityFilter&) = delete;
 
   class vtkInternals;
-  vtkInternals* Internals;
 };
 
 #endif
