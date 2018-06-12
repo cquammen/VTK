@@ -14,6 +14,7 @@
 =========================================================================*/
 #include "vtkPConnectivityFilter.h"
 
+#include "vtkAOSDataArrayTemplate.h"
 #include "vtkArrayDispatch.h"
 #include "vtkBoundingBox.h"
 #include "vtkCellData.h"
@@ -32,6 +33,7 @@
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
 #include "vtkThreshold.h"
+#include "vtkTypeList.h"
 #include "vtkUnsignedCharArray.h"
 #include "vtkUnstructuredGrid.h"
 #include "vtkWeakPointer.h"
@@ -44,6 +46,17 @@
 
 namespace
 {
+
+typedef vtkTypeList::Unique<
+  vtkTypeList_Create_6(
+    vtkAOSDataArrayTemplate<int>,
+    vtkAOSDataArrayTemplate<unsigned long>,
+    vtkAOSDataArrayTemplate<char>,
+    vtkAOSDataArrayTemplate<unsigned char>,
+    vtkAOSDataArrayTemplate<float>,
+    vtkAOSDataArrayTemplate<double>
+  )
+>::Result PointArrayTypes;
 
 struct Worker
 {
@@ -71,10 +84,12 @@ struct Worker
   template<typename PointArrayType>
   void operator()(PointArrayType* pointArray)
   {
+    typedef typename PointArrayType::ValueType PointType;
+
     // Exchange bounding boxes of the data on each rank. These are used to
     // determine neighboring ranks and to minimize the number of points sent
     // to neighboring processors.
-    std::vector<double> allBounds;
+    std::vector<PointType> allBounds;
     this->ExchangeBounds(allBounds);
 
     // Identify neighboring ranks.
@@ -82,7 +97,7 @@ struct Worker
     this->FindMyNeighbors(allBounds, myNeighbors);
 
     // Create a map from neighbor to data set boundary points and region IDs
-    std::map< int, std::vector< double > > pointsForMyNeighbors;
+    std::map< int, std::vector< PointType > > pointsForMyNeighbors;
     std::map< int, std::vector< vtkIdType > > regionIdsForMyNeighbors;
     this->GatherPointsAndRegionIds(allBounds, this->RegionStarts,
                                   pointsForMyNeighbors,
@@ -93,7 +108,7 @@ struct Worker
     this->ExchangeNumberOfPointsToSend(myNeighbors, regionIdsForMyNeighbors,
                                         sendLengths, recvLengths);
 
-    std::map< int, std::vector< double > > pointsFromMyNeighbors;
+    std::map< int, std::vector< PointType > > pointsFromMyNeighbors;
     this->SendReceivePoints(sendLengths, pointsForMyNeighbors,
                             recvLengths, pointsFromMyNeighbors);
 
@@ -126,10 +141,11 @@ struct Worker
         for (size_t ptId = 0; ptId < pointsFromMyNeighbors[rank].size()/3; ++ptId)
         {
           double x[3];
-          x[0] = pointsFromMyNeighbors[rank][3*ptId + 0];
-          x[1] = pointsFromMyNeighbors[rank][3*ptId + 1];
-          x[2] = pointsFromMyNeighbors[rank][3*ptId + 2];
+          x[0] = static_cast<double>(pointsFromMyNeighbors[rank][3*ptId + 0]);
+          x[1] = static_cast<double>(pointsFromMyNeighbors[rank][3*ptId + 1]);
+          x[2] = static_cast<double>(pointsFromMyNeighbors[rank][3*ptId + 2]);
 
+          // TODO - switch to FindClosestPointWithinRadius()
           vtkIdType localId = localPointLocator->FindClosestPoint(x);
           // Skip local ghost points as we do not need ghost-ghost links.
           vtkUnsignedCharArray* pointGhostArray = this->Output->GetPointGhostArray();
@@ -257,13 +273,17 @@ struct Worker
       vtkBoundingBox neighborBB(neighborBounds);
       for (vtkIdType id = 0; id < this->Output->GetNumberOfPoints(); ++id)
       {
+
         double pt[3];
         outputPoints->GetPoint(id, pt);
+
+        // TODO - revisit
+        TPoint typedPt[3] = {static_cast<TPoint>(pt[0]), static_cast<TPoint>(pt[1]), static_cast<TPoint>(pt[2])};
         if (neighborBB.ContainsPoint(pt))
         {
           auto & sendPoints = pointsForMyNeighbors[p];
 
-          sendPoints.insert(sendPoints.end(), pt, pt+3);
+          sendPoints.insert(sendPoints.end(), typedPt, typedPt+3);
 
           vtkIdType regionId = pointRegionIds->GetTypedComponent(id, 0);
           auto & sendRegionIds = regionIdsForMyNeighbors[p];
@@ -311,10 +331,11 @@ struct Worker
   /**
    * Send and receive points to/from neighbors.
    */
+  template< typename TPoint >
   void SendReceivePoints(const std::map< int, int > & sendLengths,
-                         const std::map< int, std::vector< double > > pointsForMyNeighbors,
+                         const std::map< int, std::vector< TPoint > > pointsForMyNeighbors,
                          const std::map< int, int > & recvLengths,
-                         std::map< int, std::vector< double > > & pointsFromMyNeighbors)
+                         std::map< int, std::vector< TPoint > > & pointsFromMyNeighbors)
   {
     const int PCF_POINTS_TAG = 194728;
     pointsFromMyNeighbors.clear();
@@ -518,7 +539,11 @@ int vtkPConnectivityFilter::RequestData(
 
   vtkPointData* outputPD = output->GetPointData();
 
-  worker(output->GetPoints()->GetData());
+  vtkArrayDispatch::DispatchByArray<PointArrayTypes> dispatcher;
+  if (!dispatcher.Execute(output->GetPoints()->GetData(), worker))
+  {
+    vtkWarningMacro(<< "Unsupported points array type '" << output->GetPoints()->GetData()->GetClassName() << "'");
+  }
 
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
