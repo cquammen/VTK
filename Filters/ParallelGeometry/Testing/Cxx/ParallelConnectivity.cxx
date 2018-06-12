@@ -116,7 +116,7 @@ int ParallelConnectivity(int argc, char* argv[])
   if (globalNumberOfCells != expectedNumberOfCells)
   {
     std::cerr << "Expected " << expectedNumberOfCells << " cells in largest "
-      << "region bug got " << globalNumberOfCells << std::endl;
+      << "region but got " << globalNumberOfCells << std::endl;
     returnValue = EXIT_FAILURE;
   }
 
